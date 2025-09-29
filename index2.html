@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>אזור אישי - ח.סבן</title>
+    <meta name="theme-color" content="#ffffff"/>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/2SbDgD1B/1.png">
+    <link rel="icon" href="https://i.postimg.cc/2SbDgD1B/1.png">
+
+    <!-- OneSignal SDK for Push Notifications - UPDATED SCRIPT -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+
+        /**
+         * Associates the client ID from your system with the OneSignal device record.
+         * This is crucial for sending notifications to a specific user.
+         * @param {string} clientId - The unique identifier for the client (e.g., '60120').
+         */
+        async function setOneSignalExternalId(clientId) {
+            if (!clientId || !window.OneSignalDeferred) return;
+            
+            window.OneSignalDeferred.push(async function(OneSignal) {
+                try {
+                    // Ensure the clientId is a string for the OneSignal API
+                    await OneSignal.setExternalUserId(String(clientId)); 
+                    console.log(`OneSignal: External User ID successfully set to: ${clientId}`);
+
+                    const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+                    if (isSubscribed) {
+                         // Use the app's built-in toast notification system if it exists
+                         if (typeof window.showToast === 'function') {
+                            window.showToast(`ההתראות מחוברות כעת ללקוח ${clientId}`, '🔔');
+                         }
+                    } else {
+                         console.warn(`OneSignal: User ${clientId} is logged in but has not subscribed to notifications.`);
+                         // If the user is not subscribed, show the default slide prompt to encourage them
+                         OneSignal.showSlidedownPrompt();
+                    }
+                } catch(e) {
+                    console.error("OneSignal External ID setup failed:", e);
+                }
+            });
+        }
+        
+        // Initialize the OneSignal SDK
+        OneSignalDeferred.push(async function(OneSignal) {
+            try {
+                await OneSignal.init({
+                    appId: "acc8a2bc-d54e-4261-b3d2-cc5c5f7b39d3", // YOUR OneSignal App ID
+                    safari_web_id: "web.onesignal.auto.5f4f9ed9-fb2e-4d6a-935d-81aa46fccce0", // YOUR Safari Web ID
+                    notifyButton: {
+                        enable: true, // Shows the bell icon
+                    },
+                    allowLocalhostAsSecureOrigin: true, // Helpful for local development testing
+                });
+                
+                // After initialization, if a client is already logged in (e.g., from a previous session),
+                // immediately try to set their external ID.
+                const storedClientId = localStorage.getItem('saban_client_id');
+                if (storedClientId) {
+                    setOneSignalExternalId(storedClientId);
+                }
+            } catch (error) {
+                console.error("OneSignal Initialization FAILED:", error.message);
+                console.warn("This error can be ignored in development environments like Canvas. It will resolve on your live Netlify domain.");
+            }
+        });
+    </script>
+    
+    <!-- Fonts and Libraries -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <style>
+        :root {
+            --brand: #0b72b9; --accent: #ff9f1c; --bg: #f0f2f5; --card: #ffffff;
+            --text-dark: #1a202c; --text-light: #4a5568; --text-muted: #718096;
+            --border: #e2e8f0; --success: #38a169; --warning: #dd6b20; --danger: #e53e3e;
+            --info: #3182ce; /* Light blue for info */
+            --radius: 16px; --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --page-transition-duration: 0.4s;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes logoPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes subtle-pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(11, 114, 185, 0.3); } 70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(11, 114, 185, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(11, 114, 185, 0); } }
+        @keyframes overdue-pulse { 0% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.4); } 70% { box-shadow: 0 0 0 12px rgba(229, 62, 62, 0); } 100% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0); } }
+        @keyframes siren-blink { 0%, 100% { background-color: #ffc107; box-shadow: 0 0 5px #ffc107; } 50% { background-color: #ff9800; box-shadow: 0 0 15px #ff9800; } }
+        @keyframes notification-pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 159, 28, 0.4); } 70% { box-shadow: 0 0 0 8px rgba(255, 159, 28, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 159, 28, 0); } }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            color: white;
+            gap: 5px;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .status-new { background-color: var(--info); }
+        .status-in-progress { background-color: var(--accent); }
+        .status-on-site { background-color: var(--success); }
+        .status-en-route { 
+            background-color: var(--danger); 
+            animation: overdue-pulse 1.5s infinite; 
+        }
+        .status-completed { background-color: var(--text-muted); opacity: 0.8; }
+        .status-overdue { background-color: var(--danger); }
+        
+        .eta-card.active { 
+            border: 2px solid var(--danger);
+            animation: none; 
+        }
+        .eta-card .status-en-route-btn {
+            background-color: var(--danger); 
+            animation: siren-blink 1s infinite alternate;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; overflow: hidden; background-color: var(--bg); }
+        body { font-family: 'Assistant', sans-serif; color: var(--text-dark); display: flex; flex-direction: column; overscroll-behavior-y: contain; visibility: hidden; }
+        body.loaded { visibility: visible; }
+
+        .app-shell { display: flex; flex-direction: column; height: 100%; }
+        .app-header { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; background-color: var(--card); border-bottom: 1px solid var(--border); position: relative; z-index: 10; }
+        .app-container { flex-grow: 1; overflow: hidden; position: relative; }
+        .bottom-nav { flex-shrink: 0; position: fixed; bottom: 0; left: 0; right: 0; height: 80px; background-color: var(--card); display: flex; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 1000; }
+
+        .page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow-y: auto; padding: 20px 15px 120px 15px; background-color: var(--bg); visibility: hidden; opacity: 0; transition: transform var(--page-transition-duration) ease, opacity var(--page-transition-duration) ease; }
+        .page.active { visibility: visible; opacity: 1; transform: translateX(0); z-index: 5;}
+        .page.exit-to-left { transform: translateX(-30px); opacity: 0; }
+        .page.exit-to-right { transform: translateX(30px); opacity: 0; }
+        .page.enter-from-left { transform: translateX(-30px); }
+        .page.enter-from-right { transform: translateX(30px); }
+        .page-title { font-size: 28px; font-weight: 700; margin-bottom: 20px; animation: fadeIn 0.5s ease-out forwards; }
+        
+        .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 14px; border: none; background: transparent; cursor: pointer; transition: color 0.2s, transform 0.2s;}
+        .nav-btn.active { color: var(--brand); }
+        .nav-btn:active svg { transform: scale(1.2); }
+        .nav-btn svg { width: 28px; height: 28px; pointer-events: none; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        .card { background-color: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; border: 1px solid var(--border); animation: popIn 0.5s ease-out forwards; overflow: hidden; }
+        .btn { background: var(--brand); color: white; border: none; padding: 12px 18px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+        .btn:active { transform: scale(0.95); }
+        .btn.secondary { background-color: var(--bg); color: var(--text-dark); border: 1px solid var(--border); }
+        
+        .modal-overlay { position: fixed; inset: 0; background-color: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: opacity 0.3s; backdrop-filter: blur(5px); }
+        .modal-overlay.show { opacity: 1; visibility: visible; }
+        .modal-content { background-color: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2); padding: 25px; border-radius: var(--radius); width: 90%; max-width: 500px; animation: popIn 0.3s; box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); }
+        .form-input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 16px; background-color: #f7f7f7; }
+
+        #toast-container { position: fixed; top: 20px; left: 15px; right: 15px; z-index: 4000; display: flex; flex-direction: column; gap: 10px; align-items: center;}
+        .toast { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 400px; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); color: var(--text-dark); padding: 14px 22px; border-radius: var(--radius); font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border: 1px solid rgba(255, 255, 255, 0.3); opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .toast .toast-icon { font-size: 24px; animation: popIn 0.5s; }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        
+        #splash-screen { position: fixed; inset: 0; z-index: 9999; background-color: #ffffff; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease, visibility 0.5s ease; }
+        #splash-logo { width: 120px; height: 120px; border-radius: 50%; display: flex; justify-content: center; align-items: center; animation: logoPulse 2s infinite ease-in-out; }
+        .splash-loader { width: 40px; height: 40px; border: 4px solid rgba(11, 114, 185, 0.2); border-top-color: var(--brand); border-radius: 50%; animation: spin 1s linear infinite; margin-top: 20px; opacity: 0; transition: opacity 0.3s; }
+        #splash-screen.loading .splash-loader { opacity: 1; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .container-card { position: relative; }
+        .container-card.overdue { border-color: var(--danger); animation: overdue-pulse 2.5s infinite; }
+        .overdue-badge { position: absolute; top: -10px; left: -10px; background-color: var(--danger); color: white; padding: 4px 10px; font-size: 12px; font-weight: 700; border-radius: 12px; }
+        .container-card .progress-bar { width: 100%; height: 8px; background-color: var(--border); border-radius: 4px; overflow: hidden; margin: 15px 0; }
+        .container-card .progress-bar-inner { height: 100%; background-color: var(--brand); border-radius: 4px; transition: width 0.8s ease-out; }
+        .container-card.overdue .progress-bar-inner { background-color: var(--danger); }
+        .mini-map-container { border-radius: 12px; border: 1px solid var(--border); height: 150px; width: 100%; margin-top: 15px; background-color: #eee; }
+        .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
+
+        .help-fab { position: fixed; bottom: 100px; left: 20px; width: 50px; height: 50px; background-color: var(--accent); color: white; border-radius: 50%; border: none; font-size: 24px; font-weight: bold; box-shadow: var(--shadow); z-index: 1001; cursor: pointer; animation: popIn 0.5s 2s ease-out backwards; }
+        .help-modal { position: fixed; inset: 0; background: var(--bg); z-index: 3000; transform: translateY(100%); transition: transform 0.4s ease-out; display: flex; flex-direction: column;}
+        .help-modal.show { transform: translateY(0); }
+        .help-header { padding: 15px; text-align: center; position: relative; background: var(--card); }
+        .help-close { position: absolute; top: 10px; left: 15px; font-size: 24px; cursor: pointer; border: none; background: none;}
+        .install-guide-icon { width: 40px; height: 40px; margin: 0 auto 10px auto; display: block; }
+        
+        .request-history { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px; }
+        .request-history-item { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
+        
+        .profile-container { position: relative; cursor: pointer; }
+        .profile-avatar { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--border); transition: transform 0.2s; }
+        .logout-popup { position: absolute; top: 50px; left: 0; background: var(--card); border-radius: 10px; box-shadow: var(--shadow); padding: 5px; opacity: 0; visibility: hidden; transition: opacity 0.2s, transform 0.2s; transform: translateY(10px); z-index: 10; }
+        .profile-container.active .logout-popup { opacity: 1; visibility: visible; transform: translateY(0); }
+        .logout-btn { background: none; border: none; padding: 8px 12px; font-weight: 600; color: var(--danger); display: flex; align-items: center; gap: 5px; cursor: pointer; }
+
+        .chat-fab {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 55px;
+            height: 55px;
+            background-color: var(--brand);
+            border-radius: 50%;
+            border: none;
+            box-shadow: var(--shadow);
+            z-index: 1001;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+        .chat-fab img { width: 30px; height: 30px; }
+
+        .chat-tooltip {
+            position: absolute;
+            right: 65px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--card);
+            color: var(--text-dark);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            box-shadow: var(--shadow);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .chat-fab:hover .chat-tooltip { opacity: 1; }
+        
+        .notification-dot {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 12px;
+            height: 12px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            border: 2px solid var(--card);
+            animation: notification-pulse 2s infinite;
+        }
+        
+        .chat-message {
+            padding: 10px 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            max-width: 85%;
+            font-size: 15px;
+        }
+        .chat-user {
+            background-color: var(--brand);
+            color: white;
+            margin-right: auto;
+            border-bottom-right-radius: 0;
+        }
+        .chat-system {
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text-dark);
+            margin-left: auto;
+            border-bottom-left-radius: 0;
+            position: relative;
+        }
+        .chat-metadata {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+            text-align: left;
+        }
+
+        #history-filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .filter-btn { background-color: var(--card); color: var(--text-dark); border: 1px solid var(--border); padding: 8px 16px; border-radius: 20px; cursor: pointer; transition: all 0.2s; }
+        .filter-btn.active { background-color: var(--brand); color: white; border-color: var(--brand); font-weight: 700; }
+        .history-table { width: 100%; border-collapse: collapse; }
+        .history-table th { text-align: right; padding: 12px; border-bottom: 2px solid var(--brand); font-size: 14px; }
+        .history-table td { padding: 14px 12px; border-bottom: 1px solid var(--border); }
+        .history-row { cursor: pointer; transition: background-color 0.2s; border-right: 4px solid transparent; }
+        .history-row:hover { background-color: #f7fafc; }
+        .history-row[data-action-type="החלפה"] { border-right-color: var(--accent); }
+        .history-row[data-action-type="הורדה"] { border-right-color: var(--success); }
+        .history-row[data-action-type="פינוי"] { border-right-color: var(--danger); }
+        
+        .eta-road { width: 100%; height: 4px; background: var(--border); border-radius: 2px; margin-top: 15px; position: relative; }
+        .eta-progress { height: 100%; background: var(--brand); border-radius: 2px; position: absolute; right: 0; top: 0; transition: width 1s linear; }
+        .eta-truck { font-size: 30px; position: absolute; top: -20px; transform: translateX(50%) scaleX(-1); transition: right 1s linear; }
+        .eta-truck.static-truck { color: #ccc; }
+        .siren { width: 8px; height: 8px; border-radius: 50%; position: absolute; top: -5px; left: 12px; animation: siren-blink 1s infinite; }
+
+        .header-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .header-btn:hover {
+            color: var(--text-dark);
+        }
+        .header-btn:active {
+            background-color: var(--border);
+        }
+        
+        .materials-form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+        .materials-form-grid .form-group { margin-bottom: 0; }
+        
+        .step-indicator { 
+            border-bottom: 4px solid transparent; 
+            padding: 12px 0; 
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .step-active {
+            border-color: var(--brand) !important;
+            color: var(--brand);
+            font-weight: 700;
+        }
+        .form-step { 
+            animation: fadeIn 0.5s ease-out; 
+            min-height: 350px;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        .product-item {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .product-item.unidentified {
+             border-left: 4px solid var(--accent);
+             background-color: #fff8f0; 
+        }
+
+        .active-order-card {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-left: 5px solid;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .active-order-card[data-type="materials"] { border-left-color: var(--brand); }
+        .active-order-card[data-type="container"] { border-left-color: var(--accent); }
+        .active-order-card .order-title { font-weight: 700; font-size: 1rem; }
+        
+    </style>
+</head>
+<body>
+    <div class="app-shell" style="display: none;">
+        <header class="app-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button class="header-btn" data-action="refresh-data" aria-label="רענן נתונים">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                </button>
+                <div id="profile-container" class="profile-container" data-action="toggle-profile">
+                    <img id="profile-avatar" src="" alt="Profile" class="profile-avatar">
+                    <div id="notification-badge" class="notification-dot" style="display: none;"></div>
+                    <div class="logout-popup">
+                        <button data-action="logout" class="logout-btn">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/><path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/></svg>
+                            <span>התנתק</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: center; font-weight: 600;">
+                <div id="clock"></div>
+                <div id="date" style="font-size: 12px; color: var(--text-muted);"></div>
+            </div>
+            <h1 id="client-name-header" style="font-weight: 700; font-size: 16px;">...</h1>
+        </header>
+
+        <main class="app-container" id="app-container">
+            <!-- Home Page (Dashboard) -->
+            <div id="page-home" class="page">
+                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                    <h1 class="page-title" id="greeting" style="margin-bottom: 0;"></h1>
+                    <button class="btn" data-action="navigate" data-page="page-materials">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg> הזמן חומרים
+                    </button>
+                </div>
+                <div id="eta-card-container"></div>
+                <h2 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 15px;">הזמנות פעילות</h2>
+                <div id="active-orders-container"></div>
+            </div>
+            
+            <!-- Containers Page (Main Page) -->
+            <div id="page-containers" class="page active">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                    <h1 class="page-title" id="containers-page-title">המכולות שלי</h1>
+                </div>
+                <div id="containers-list"></div>
+            </div>
+            
+            <!-- Building Materials Order Page -->
+            <div id="page-materials" class="page">
+                 <h1 class="page-title">הזמנת חומרי בניין</h1>
+                 <div class="card">
+                    <p style="color: var(--text-light); margin-bottom: 20px;">אנא מלא את פרטי ההזמנה ושליח אותה לטיפול מיידי.</p>
+                    <div id="materials-form-multi-step">
+                         <div class="flex border-b border-border mb-6">
+                            <div id="step-indicator-1" class="step-indicator flex-1 text-center step-active"><strong>1.</strong> פרטי אספקה</div>
+                            <div id="step-indicator-2" class="step-indicator flex-1 text-center"><strong>2.</strong> בחירת מוצרים</div>
+                            <div id="step-indicator-3" class="step-indicator flex-1 text-center"><strong>3.</strong> סיכום ואישור</div>
+                        </div>
+
+                        <form id="materials-order-form">
+                            <!-- Step 1: Delivery Details -->
+                            <div id="form-step-1" class="form-step">
+                                <div class="materials-form-grid">
+                                    <div class="form-group">
+                                        <label for="deliveryAddress" style="font-weight: 600;">כתובת אספקה</label>
+                                        <input type="text" id="deliveryAddress" class="form-input" placeholder="רחוב ומספר בית" required data-hint="כתובת מלאה וברורה לאתר הפרויקט, כולל עיר, רחוב ומספר.">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="deliveryDate" style="font-weight: 600;">תאריך אספקה מבוקש</label>
+                                        <input type="date" id="deliveryDate" class="form-input" required data-hint="נא לבחור את התאריך המבוקש. הזמנות דחופות יש לתאם טלפונית.">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="contactName" style="font-weight: 600;">איש קשר</label>
+                                        <input type="text" id="contactName" class="form-input" placeholder="שם איש קשר באתר" required data-hint="שם מלא של איש קשר זמין באתר לצורך פריקה ותיאום.">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="contactPhone" style="font-weight: 600;">טלפון איש קשר</label>
+                                        <input type="tel" id="contactPhone" class="form-input" placeholder="05X-XXXXXXX" required data-hint="מספר טלפון נייד זמין לקבלת שיחת תיאום מהנהג.">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="transportType" style="font-weight: 600;">סוג הובלה</label>
+                                        <select id="transportType" class="form-input" required data-hint="בחרו אם נדרשת הובלת מנוף וכמה מטרים נדרשים לפריקה.">
+                                            <option value="פריקה ידנית">פריקה ידנית</option>
+                                            <option value="מנוף 10 מטר">מנוף 10 מטר</option>
+                                            <option value="מנוף 15 מטר">מנוף 15 מטר</option>
+                                            <option value="מנוף 20 מטר">מנוף 20 מטר</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Step 2: Product Selection -->
+                            <div id="form-step-2" class="form-step hidden">
+                                <div class="relative mb-4">
+                                    <input type="text" id="product-search" class="form-input p-3 pl-10" placeholder="חפש מוצר (שם/מק''ט) או הדבק רשימה..." data-hint="חפש מוצרים מקטלוג או הקלד טקסט חופשי (מוצר, כמות) והקש Enter להוספה.">
+                                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
+                                </div>
+                                <div id="product-suggestions" class="bg-white border border-border rounded-md max-h-48 overflow-y-auto mb-4"></div>
+                                <div id="order-items-container" class="space-y-3 min-h-[150px]">
+                                    <p class="text-center text-text-muted">הוסף מוצרים לבחירתך</p>
+                                </div>
+                            </div>
+
+                            <!-- Step 3: Summary & Confirmation -->
+                            <div id="form-step-3" class="form-step hidden">
+                                <div class="bg-gray-50 p-6 rounded-lg border border-border">
+                                    <h3 class="text-xl font-bold mb-4 border-b pb-2">סיכום פרטי אספקה</h3>
+                                    <div id="summary-details" class="space-y-3 text-text-light"></div>
+                                    <h3 class="text-xl font-bold mt-6 mb-4 border-b pb-2">פריטים להזמנה</h3>
+                                    <div id="summary-items" class="mt-4 pt-4 space-y-2"></div>
+                                    <textarea id="deliveryNotes" class="form-input w-full mt-6" rows="3" placeholder="הערות לנהג / פריקה... (חובה למלא אם יש דגשים)" name="deliveryNotes" data-hint="ציין כאן דגשים מיוחדים לפריקה (קומה, צד, גישה)."></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="flex justify-between items-center pt-4 border-t">
+                        <button type="button" id="form-back-btn" class="btn secondary" data-step-action="-1" style="visibility: hidden;">חזור</button>
+                        <button type="button" id="form-next-btn" class="btn" data-step-action="1">הבא</button>
+                    </div>
+                 </div>
+            </div>
+
+            <!-- History Page -->
+            <div id="page-history" class="page"><h1 class="page-title">היסטוריית הזמנות</h1><div id="history-content"></div></div>
+            <!-- Chat Page -->
+            <div id="page-chat" class="page">
+                <h1 class="page-title">צ'אט ותקשורת מהירה</h1>
+                <div id="chat-history-container" class="card" style="min-height: 400px; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 0;">
+                    <div id="chat-messages" style="overflow-y: auto; flex-grow: 1; margin-bottom: 15px;">
+                    </div>
+                    <form id="chat-form" style="padding-top: 15px; border-top: 1px solid var(--border);">
+                        <label for="chat-message" style="font-weight: 600; display: block; margin-bottom: 5px;">שלח הודעה למחלקת הזמנות:</label>
+                        <textarea id="chat-message" required placeholder="הקלד כאן הודעה, בקשה או שאלה..." class="form-input" style="width:100%; height:80px;"></textarea>
+                        <button type="submit" class="btn" style="width:100%; margin-top: 10px;">שלח הודעה</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+        
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-action="navigate" data-page="page-containers">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8.29V15.7a2 2 0 0 1-1.82 2H4.82A2 2 0 0 1 3 15.71V8.29a2 2 0 0 1 .45-1.28L8 2.29a2 2 0 0 1 1.45-.7a2 2 0 0 1 1.45-.7l4.55 4.72a2 2 0 0 1 .45 1.28Z"></path><path d="M12 17.71V12"></path></svg>
+                <span>דף הבית</span>
+            </button>
+            
+            <button class="nav-btn" data-action="navigate" data-page="page-materials">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="3" width="7" height="7" rx="1"/><path d="M14 7h7"/></svg>
+                <span>חומרי בניין</span>
+            </button>
+            
+            <button class="nav-btn" data-action="navigate" data-page="page-history">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                <span>היסטוריה</span>
+            </button>
+            
+            <button class="nav-btn" data-action="navigate" data-page="page-chat">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 15-3-3-3 3"></path><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"></path><path d="m3 9 3 3 3-3"></path></svg>
+                <span>צ'אט</span>
+            </button>
+        </nav>
+    </div>
+
+    <button class="help-fab" data-action="help-fab" style="display: none;">?</button>
+    <button class="chat-fab" data-action="navigate" data-page="page-chat">
+        <img src="https://img.icons8.com/?size=100&id=XFOumBmRR5zT&format=png&color=FFFFFF" alt="chat icon">
+        <span class="chat-tooltip">פנייה מהירה למחלקת הזמנות</span>
+    </button>
+
+    <div id="splash-screen"><div id="splash-logo"><img src="https://i.postimg.cc/2SbDgD1B/1.png" alt="לוגו ח.סבן" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"></div><div class="splash-loader"></div></div>
+    <div id="toast-container"></div>
+    <div id="modal-container" class="modal-overlay"></div>
+
+    <script>
+    (() => {
+        try {
+            document.addEventListener('DOMContentLoaded', () => {
+                const API_URL = "https://script.google.com/macros/s/AKfycbx8gTM7JzhavujM_uT9rRxFqqBKQ-X8reNvDgkI6Vqq0ch9vF03Z2ggOjB31d7h-BimFQ/exec";
+                const WHATSAPP_NUMBER = '972508860896';
+                
+                let clientState = { 
+                    id: null, name: null, avatar: null, orders: [], materialOrders: [], 
+                    addresses: new Set(), currentHistoryFilter: 'all', productCatalog: [], 
+                    materialOrder: { items: [], step: 1 },
+                    chatHistory: [
+                        { sender: 'system', message: 'שלום וברוך הבא, אני העוזר האישי שלך. איך אוכל לעזור לך היום?', timestamp: new Date().toISOString() }
+                    ],
+                    hasUnreadChat: JSON.parse(localStorage.getItem('saban_unread_chat') || 'true')
+                };
+                let currentPageId = 'page-containers';
+                let mapInstances = {};
+                const dom = {};
+                
+                const STATUS_MAP = {
+                    'חדש': { text: 'חדש', class: 'status-new', icon: '📝' },
+                    'בטיפול': { text: 'בטיפול', class: 'status-in-progress', icon: '🛠️' },
+                    'מוכן למשלוח': { text: 'מוכן למשלוח', class: 'status-in-progress', icon: '📦' },
+                    'בדרך': { text: 'בדרך', class: 'status-en-route', icon: '🚚' },
+                    'באתר': { text: 'באתר', class: 'status-on-site', icon: '📍' },
+                    'פעיל': { text: 'פעיל', class: 'status-on-site', icon: '👷' },
+                    'בחריגה': { text: 'בחריגה', class: 'status-overdue', icon: '🚨' },
+                    'סגור': { text: 'הושלם', class: 'status-completed', icon: '✅' },
+                    'בוטל': { text: 'בוטל', class: 'status-completed', icon: '❌' },
+                };
+                const getStatusInfo = (status) => STATUS_MAP[status] || { text: status, class: 'status-new', icon: '📝' };
+
+                const fieldHints = {
+                    'deliveryAddress': 'כתובת מלאה וברורה לאתר הפרויקט, כולל עיר, רחוב ומספר.',
+                    'deliveryDate': 'נא לבחור את התאריך המבוקש. הזמנות דחופות יש לתאם טלפונית.',
+                    'contactName': 'שם מלא של איש קשר זמין באתר לצורך פריקה ותיאום.',
+                    'contactPhone': 'מספר טלפון נייד זמין לקבלת שיחת תיאום מהנהג.',
+                    'transportType': 'בחרו אם נדרשת הובלת מנוף וכמה מטרים נדרשים לפריקה.',
+                    'product-search': 'חפש מוצרים מקטלוג או הקלד טקסט חופשי (מוצר, כמות) והקש Enter להוספה.',
+                    'deliveryNotes': 'ציין כאן דגשים מיוחדים לפריקה (קומה, צד, גישה).',
+                };
+                
+                let activeHintTimeout;
+
+                function initApp() {
+                    document.body.classList.add('loaded');
+                    cacheDomElements();
+                    updateClock();
+                    setInterval(updateClock, 1000);
+                    
+                    const storedClientId = localStorage.getItem('saban_client_id');
+                    if (storedClientId) {
+                        dom.splashScreen.classList.add('loading');
+                        loadClientData(storedClientId);
+                        loadProductCatalog(); 
+                    } else {
+                        dom.splashScreen.style.display = 'none';
+                        promptForClientId();
+                    }
+                }
+
+                function cacheDomElements(){
+                    Object.assign(dom, {
+                        body: document.body, appShell: document.querySelector('.app-shell'), splashScreen: document.getElementById('splash-screen'),
+                        pages: document.querySelectorAll('.page'), navButtons: document.querySelectorAll('.nav-btn'), modalContainer: document.getElementById('modal-container'),
+                        toastContainer: document.getElementById('toast-container'), activeOrdersContainer: document.getElementById('active-orders-container'),
+                        containersList: document.getElementById('containers-list'), etaCardContainer: document.getElementById('eta-card-container'),
+                        greeting: document.getElementById('greeting'), clientNameHeader: document.getElementById('client-name-header'),
+                        profileContainer: document.getElementById('profile-container'), profileAvatar: document.getElementById('profile-avatar'),
+                        notificationBadge: document.getElementById('notification-badge'), clock: document.getElementById('clock'), date: document.getElementById('date'),
+                        helpFab: document.querySelector('.help-fab'), helpModal: document.getElementById('help-modal'),
+                        historyContent: document.getElementById('history-content'), chatContent: document.getElementById('chat-content'),
+                        chatFab: document.querySelector('.chat-fab'), chatMessages: document.getElementById('chat-messages'),
+                        materialsForm: document.getElementById('materials-order-form'), formSteps: document.querySelectorAll('.form-step'),
+                        stepIndicators: document.getElementById('materials-form-multi-step') ? document.querySelectorAll('.step-indicator') : [],
+                        formNextBtn: document.getElementById('form-next-btn'), formBackBtn: document.getElementById('form-back-btn'),
+                        productSearch: document.getElementById('product-search'), productSuggestions: document.getElementById('product-suggestions'),
+                        orderItemsContainer: document.getElementById('order-items-container'), summaryDetails: document.getElementById('summary-details'),
+                        summaryItems: document.getElementById('summary-items'),
+                    });
+                }
+                
+                async function loadProductCatalog() {
+                    try {
+                        const data = await apiPost({ action: 'getProductCatalog' });
+                        if (data.status === 'success' && data.catalog) {
+                            clientState.productCatalog = data.catalog.map(p => ({
+                                "שם מוצר": p["שם מוצר"], "מק\"ט": p["מק\"ט"], "יחידת מידה": p["unitOfMeasure"],
+                                "יח' במשטח": p["standardQuantityPerUnit"], "בסיס": p["baseUnit"],
+                                "מפרט טכני": p["technicalSpecification"] || "אין מפרט טכני זמין.",
+                                "תמונה": `https://placehold.co/100x100/0b72b9/ffffff?text=${p["מק\"ט"]}`
+                            }));
+                             console.log(`Product catalog loaded successfully (${clientState.productCatalog.length} items).`);
+                        } else {
+                            console.warn("API did not return a successful catalog:", data.message || "Unknown API Error");
+                            clientState.productCatalog = []; 
+                        }
+                    } catch (error) {
+                        console.error("Error fetching product catalog:", error);
+                        clientState.productCatalog = [];
+                        showToast(`שגיאה בטעינת קטלוג: ${error.message || 'כשל תקשורת'}`, '⚠️');
+                    }
+                }
+
+                async function loadClientData(clientId, isRefresh = false) {
+                    try {
+                        const data = await apiPost({ action: 'getClientData', customerId: clientId });
+
+                        if (data.status === 'error' || !data.user || !data.user["שם לקוח"]) {
+                             throw new Error(data.message || "Login failed or client not found.");
+                        }
+                        
+                        const allOrders = [...(data.containers || []), ...(data.materialOrders || [])];
+                        clientState = { 
+                            ...clientState, 
+                            id: data.user["מספר לקוח"], 
+                            name: data.user["שם לקוח"], 
+                            avatar: data.user["תמונת פרופיל"], 
+                            orders: data.containers || [], 
+                            materialOrders: data.materialOrders || [],
+                            addresses: new Set(allOrders.map(o => o['כתובת'] || o['פרטי אספקה']).filter(Boolean)),
+                            hasUnreadChat: JSON.parse(localStorage.getItem('saban_unread_chat') || 'true'), 
+                        };
+                        localStorage.setItem('saban_client_id', clientState.id);
+                        
+                        setOneSignalExternalId(clientState.id);
+                        
+                        if (!isRefresh) {
+                            await playSplashScreenAnimation();
+                            dom.appShell.style.display = 'flex';
+                            setupEventListeners();
+                            navigateTo('page-containers', true);
+                            renderAllPages();
+                            dom.helpFab.style.display = 'block';
+                            dom.chatFab.style.display = 'flex';
+                        } else {
+                            renderHeaderAndGreeting();
+                            renderAllPages();
+                        }
+                    } catch (error) {
+                        console.error("Failed to load client data:", error);
+                        localStorage.removeItem('saban_client_id');
+                        dom.splashScreen.classList.remove('loading');
+                        dom.splashScreen.style.display = 'none';
+                        promptForClientId();
+                        console.warn(`Attempted login failed: ${error.message}`);
+                    }
+                }
+                
+                async function apiPost(body) {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 15000);
+                    try {
+                        const response = await fetch(API_URL, { method: 'POST', mode: 'cors', body: JSON.stringify(body), cache: 'no-cache', headers: { 'Content-Type': 'text/plain' }, signal: controller.signal });
+                        clearTimeout(timeoutId);
+                        if (!response.ok) throw new Error(`Network error (HTTP ${response.status})`);
+                        const textResponse = await response.text();
+                        if (textResponse.startsWith('<')) {
+                            throw new Error("Invalid server response. Check Apps Script URL/Deployment.");
+                        }
+                        return JSON.parse(textResponse);
+                    } catch(error) {
+                        clearTimeout(timeoutId);
+                        console.error("API Post Error:", error);
+                        throw error;
+                    }
+                }
+                
+                function promptForClientId() {
+                    dom.splashScreen.style.display = 'none';
+                    dom.modalContainer.innerHTML = `<div class="modal-content"><h3>ברוכים הבאים</h3><p style="color: var(--text-light); margin: 10px 0 20px 0;">כדי להתחבר, אנא הזן מספר לקוח או טלפון.</p><form id="login-form"><input type="text" id="login-identifier" placeholder="מספר לקוח / טלפון" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 16px; margin-bottom: 15px;"><button type="submit" class="btn" style="width: 100%;">התחבר</button></form></div>`;
+                    dom.modalContainer.classList.add('show');
+                    
+                    document.getElementById('login-form').addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        const identifier = document.getElementById('login-identifier').value.trim();
+                        if (identifier) {
+                            dom.modalContainer.classList.remove('show');
+                            dom.splashScreen.style.display = 'flex';
+                            dom.splashScreen.classList.add('loading');
+                            loadClientData(identifier);
+                        }
+                    });
+                }
+
+                function updateClock() {
+                    const now = new Date();
+                    dom.clock.textContent = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+                    dom.date.textContent = now.toLocaleDateString('he-IL', { weekday: 'long', day: '2-digit', month: '2-digit' });
+                }
+
+                async function playSplashScreenAnimation() {
+                    return new Promise(resolve => {
+                        setTimeout(() => {
+                            dom.splashScreen.style.opacity = '0';
+                            dom.splashScreen.addEventListener('transitionend', () => {
+                                dom.splashScreen.style.display = 'none';
+                                resolve();
+                            }, { once: true });
+                        }, 500);
+                    });
+                }
+                
+                function updateChatNotificationBadge() {
+                    if (clientState.hasUnreadChat) {
+                        dom.notificationBadge.style.display = 'block';
+                        dom.chatFab.style.animation = 'notification-pulse 2s infinite';
+                    } else {
+                        dom.notificationBadge.style.display = 'none';
+                        dom.chatFab.style.animation = 'none';
+                    }
+                }
+
+                function navigateTo(pageId, isInitial = false) {
+                     if (!isInitial && currentPageId === pageId) return;
+                    const oldPage = document.getElementById(currentPageId);
+                    const newPage = document.getElementById(pageId);
+                    if (!newPage) return;
+                    
+                    if (pageId === 'page-chat' && clientState.hasUnreadChat) {
+                        clientState.hasUnreadChat = false;
+                        localStorage.setItem('saban_unread_chat', 'false');
+                        updateChatNotificationBadge();
+                        renderChatPage(); 
+                        setTimeout(() => {
+                             const chatContainer = document.getElementById('chat-messages');
+                             chatContainer.scrollTop = chatContainer.scrollHeight;
+                        }, 100);
+                    }
+                    
+                    const pagesOrder = ['page-containers', 'page-materials', 'page-history', 'page-chat'];
+                    
+                    if (isInitial) { newPage.classList.add('active'); } 
+                    else {
+                        const oldPageIndex = pagesOrder.indexOf(currentPageId);
+                        const newPageIndex = pagesOrder.indexOf(pageId);
+                        
+                        if (oldPageIndex === -1) { oldPage.classList.remove('active'); newPage.classList.add('active'); }
+                        else {
+                            const isForward = newPageIndex > oldPageIndex;
+                            oldPage.classList.remove('active');
+                            oldPage.classList.add(isForward ? 'exit-to-left' : 'exit-to-right');
+                            
+                            newPage.classList.add(isForward ? 'enter-from-right' : 'enter-from-left');
+                            void newPage.offsetWidth; 
+                            newPage.classList.add('active');
+                            oldPage.addEventListener('transitionend', function handler() {
+                                oldPage.classList.remove('exit-to-left', 'exit-to-right');
+                                newPage.classList.remove('enter-from-left', 'enter-from-right');
+                                oldPage.removeEventListener('transitionend', handler);
+                            }, { once: true });
+                        }
+                    }
+                    currentPageId = pageId;
+                    dom.navButtons.forEach(b => b.classList.toggle('active', b.dataset.page === pageId));
+                    if (pageId === 'page-materials') updateFormView();
+
+                    dom.chatFab.style.display = (pageId === 'page-containers' || pageId === 'page-home') ? 'flex' : 'none';
+                }
+
+                function renderAllPages() {
+                    renderHeaderAndGreeting();
+                    renderHomePage(); 
+                    renderContainersPage(); 
+                    renderHistoryPage();
+                    renderChatPage();
+                    updateChatNotificationBadge();
+                }
+
+                function renderHeaderAndGreeting() {
+                    const defaultAvatar = "https://placehold.co/40x40/0b72b9/ffffff?text=EA";
+                    dom.clientNameHeader.textContent = clientState.name;
+                    dom.profileAvatar.src = clientState.avatar || defaultAvatar;
+                    dom.profileAvatar.onerror = () => dom.profileAvatar.src = defaultAvatar;
+                    const hour = new Date().getHours();
+                    let greetingText = (hour < 12) ? "בוקר טוב" : (hour < 18) ? "צהריים טובים" : "ערב טוב";
+                    dom.greeting.textContent = `${greetingText}, ${clientState.name.split(' ')[0]}`;
+                }
+                
+                function renderHomePage() {
+                    const allActiveOrders = [
+                        ...clientState.orders.filter(o => o['סטטוס'] !== 'סגור' && o['סטטוס'] !== 'בוטל'),
+                        ...clientState.materialOrders.filter(o => o['סטטוס'] !== 'סגור' && o['סטטוס'] !== 'בוטל')
+                    ].sort((a, b) => new Date(b['תאריך הזמנה']) - new Date(a['תאריך הזמנה']));
+                    
+                    const upcomingOrder = allActiveOrders.find(o => o['סטטוס'] === 'בדרך');
+                    dom.etaCardContainer.innerHTML = upcomingOrder ? createEtaCardHTML(upcomingOrder) : '<div class="card" style="text-align:center;"><p>אין צפי הגעה עדכני להזמנות בדרך.</p></div>';
+                    
+                    const container = dom.activeOrdersContainer;
+                    container.innerHTML = '';
+                    if (allActiveOrders.length > 0) {
+                        allActiveOrders.forEach(order => {
+                            container.appendChild(createActiveOrderCard(order));
+                        });
+                    } else {
+                        container.innerHTML = '<div class="card" style="text-align:center;"><p>אין לך כרגע הזמנות פעילות.</p></div>';
+                    }
+                }
+
+                function createActiveOrderCard(order) {
+                    const card = document.createElement('div');
+                    const statusInfo = getStatusInfo(order['סטטוס']);
+                    const title = order.orderType === 'container' ? `מכולה ${order['מזהה מכולה (אופציו'] || order['תעודה']} (${order['סוג פעולה']})` : `הזמנת חומרים ${order['תעודה']}`;
+                    const project = order['פרוייקט'] || order['שם פרויקט'] || 'פרויקט כללי';
+                    const address = order['כתובת'] || order['פרטי אספקה'];
+                    
+                    card.className = 'card active-order-card';
+                    card.dataset.type = order.orderType;
+                    card.dataset.action = 'show-history-details';
+                    card.dataset.orderId = order['תעודה'];
+                    
+                    card.innerHTML = `
+                        <div>
+                            <p class="order-title">${title}</p>
+                            <p style="font-size: 0.8rem; color: var(--text-muted);">📍 ${project} | ${address.split(',')[0]}</p>
+                        </div>
+                        <div class="status-badge ${statusInfo.class}">
+                            ${statusInfo.icon} ${statusInfo.text}
+                        </div>
+                    `;
+                    return card;
+                }
+
+                function createEtaCardHTML(order) {
+                    const eta = order['זמן הגעה משוער'];
+                    const driverName = order['שם נהג'];
+                    const statusInfo = getStatusInfo(order['סטטוס']);
+                    const project = order['פרוייקט'] || order['שם פרויקט'];
+                    const address = order['כתובת'] || order['פרטי אספקה'];
+                    let title = statusInfo.text;
+                    let etaText = eta ? `צפי הגעה: **${eta}**` : 'מעקב זמין בקרוב...';
+                    let progressStyle = 'width: 0%;';
+                    let truckStyle = 'right: 0%;';
+                    
+                    let truckClass = 'static-truck';
+                    let isEnRoute = order['סטטוס'] === 'בדרך';
+                    
+                    if (isEnRoute && eta) {
+                        const now = new Date();
+                        const [hours, minutes] = eta.split(':').map(Number);
+                        const etaDate = new Date(now);
+                        etaDate.setHours(hours, minutes, 0, 0);
+                        
+                        const startDate = new Date(now);
+                        startDate.setHours(now.getHours() - 2, 0, 0, 0); 
+                        if (startDate > etaDate) startDate.setHours(8, 0, 0, 0); 
+                        
+                        const totalDuration = etaDate - startDate;
+                        const elapsedDuration = now - startDate;
+                        const progress = Math.min(100, Math.max(0, (elapsedDuration / totalDuration) * 100));
+
+                        progressStyle = `width: ${progress}%;`;
+                        truckStyle = `right: calc(${progress}% - 30px);`; 
+                        
+                        if(progress >= 100) { title = 'הגענו ליעד! 📍'; truckStyle = 'right: 0%;'; isEnRoute = false; }
+                        
+                        truckClass = '';
+                    }
+
+                    return `
+                        <div class="card eta-card ${isEnRoute ? 'active' : ''}" style="border-color: ${isEnRoute ? 'var(--danger)' : 'var(--border)'};">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="color: var(--text-dark); font-weight: 700;">
+                                    ${order.orderType === 'container' ? '📦 מכולה' : '🧱 חומרים'} | ${project}
+                                </div>
+                                ${isEnRoute ? `<button class="status-en-route-btn">🚚 בדרך!</button>` : `<span class="status-badge ${statusInfo.class}">${statusInfo.icon} ${statusInfo.text}</span>`}
+                            </div>
+                            <div style="text-align: center; margin-top: 10px; font-weight: 600;">
+                                ${driverName ? `הנהג ${driverName}` : 'צוות ההובלה'}
+                                <p style="font-size: 1.1rem; margin: 5px 0 0 0;">${etaText}</p>
+                            </div>
+                            
+                            <div class="eta-road">
+                                <div class="eta-progress" style="${progressStyle}"></div>
+                                <div class="eta-truck ${truckClass}" style="${truckStyle}">
+                                    ${isEnRoute ? '<div class="siren"></div>' : ''}
+                                    🚛
+                                </div>
+                            </div>
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">כתובת: ${address}</p>
+                        </div>`;
+                }
+
+                function renderContainersPage() {
+                    const activeOnSite = clientState.orders.filter(o => o['סטטוס'] === 'פעיל');
+                    const container = dom.containersList;
+                    container.innerHTML = '';
+                    
+                    if (activeOnSite.length === 0) { 
+                        container.innerHTML += '<div class="card" style="text-align:center;"><p>אין לך מכולות פעילות כרגע.</p><button class="btn secondary" data-action="new-order" style="margin-top: 10px;">הזמן מכולה חדשה</button></div>'; 
+                        return; 
+                    }
+                    
+                    container.innerHTML += `<h2 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 15px;">המכולות הפעילות שלך (${activeOnSite.length}):</h2>`;
+                    activeOnSite.forEach(order => {
+                        const cardElement = createContainerCardElement(order);
+                        container.appendChild(cardElement);
+                        setTimeout(() => renderLeafletMap(cardElement.querySelector('.mini-map-container'), order['כתובת']), 100);
+                    });
+                }
+                
+                function htmlToElement(html) {
+                    const template = document.createElement('template');
+                    template.innerHTML = html.trim();
+                    return template.content.firstChild;
+                }
+
+                function renderHistoryPage(filter = clientState.currentHistoryFilter) {
+                    clientState.currentHistoryFilter = filter;
+                    const allOrders = [...clientState.orders, ...clientState.materialOrders];
+                    
+                    const projects = ['all', ...new Set(allOrders.map(o => o['פרוייקט'] || o['שם פרויקט']).filter(Boolean))];
+                    const filtersHTML = projects.map(p => `<button class="filter-btn ${filter === p ? 'active' : ''}" data-action="filter-history" data-project="${p}">${p === 'all' ? 'הכל' : p}</button>`).join('');
+                    
+                    const filteredOrders = allOrders
+                        .filter(o => filter === 'all' || (o['פרוייקט'] || o['שם פרויקט']) === filter)
+                        .sort((a, b) => new Date(b['תאריך הזמנה']) - new Date(a['תאריך הזמנה']));
+
+                    const tableHTML = `
+                        <div id="history-filters">${filtersHTML}</div>
+                        <div style="overflow-x: auto;">
+                            <table class="history-table">
+                                <thead><tr><th>סוג</th><th>פרויקט</th><th>תעודה</th><th>תאריך</th><th>סטטוס</th></tr></thead>
+                                <tbody>
+                                    ${filteredOrders.map(order => {
+                                        const statusInfo = getStatusInfo(order['סטטוס']);
+                                        const orderTypeIcon = order.orderType === 'container' ? '📦' : '🧱';
+                                        return `
+                                        <tr class="history-row" data-action="show-history-details" data-order-id="${order['תעודה']}" data-order-type="${order.orderType}" data-action-type="${order['סוג פעולה'] || order.orderType}">
+                                            <td>${orderTypeIcon}</td>
+                                            <td>${order['פרוייקט'] || order['שם פרויקט'] || '-'}</td>
+                                            <td>${order['תעודה'] || ''}</td>
+                                            <td>${new Date(order['תאריך הזמנה'])?.toLocaleDateString('he-IL') || ''}</td>
+                                            <td><span class="status-badge ${statusInfo.class}">${statusInfo.icon} ${statusInfo.text}</span></td>
+                                        </tr>`}).join('')}
+                                </tbody>
+                            </table>
+                        </div>`;
+                    dom.historyContent.innerHTML = tableHTML;
+                }
+
+                function renderChatPage() {
+                    if (!dom.chatMessages) return;
+                    dom.chatMessages.innerHTML = clientState.chatHistory.map(msg => {
+                        const senderClass = msg.sender === 'user' ? 'chat-user' : 'chat-system';
+                        const time = new Date(msg.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+                        const date = new Date(msg.timestamp).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
+                        return `<div class="chat-message ${senderClass}">${msg.message}<span class="chat-metadata">${date} ${time} | ${msg.sender === 'user' ? 'אני' : 'מערכת'}</span></div>`;
+                    }).join('');
+                    dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
+                }
+                
+                function createContainerCardElement(order) {
+                    const card = document.createElement('div');
+                    card.className = 'card container-card';
+                    const startDate = new Date(order['תאריך התחלה'] || order['תאריך הזמנה']);
+                    const endDate = new Date(order['תאריך סיום'] || order['תאריך סיום צפוי']);
+                    const progress = Math.min(100, ((Date.now() - startDate) / (endDate - startDate)) * 100);
+                    const remainingDays = Math.ceil(Math.max(0, endDate - Date.now()) / (1000 * 60 * 60 * 24));
+                    const isOverdue = Date.now() > endDate;
+                    if(isOverdue) card.classList.add('overdue');
+                    
+                    const historyHTML = (order.requests || []).map(req => `<div class="request-history-item"><span>בקשת ${req.type}</span><span style="color: var(--text-muted);">${req.date}</span></div>`).join('');
+                    const statusInfo = getStatusInfo(isOverdue ? 'בחריגה' : order['סטטוס']);
+
+                    card.innerHTML = `
+                        ${isOverdue ? '<div class="overdue-badge">🚨 בחריגה</div>' : ''}
+                        <div style="display:flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <h3 style="font-size: 1.1rem; margin-bottom: 4px;">${order['פרוייקט'] || `מכולה ${order['תעודה']}`}</h3>
+                                <p style="color: var(--text-light); font-size: 0.9rem;">${order['כתובת']}</p>
+                            </div>
+                            <div style="text-align: center; flex-shrink: 0; margin-right: 15px;">
+                                <div class="status-badge ${statusInfo.class}" style="margin-bottom: 5px;">${statusInfo.icon} ${statusInfo.text}</div>
+                                <div style="font-weight: bold; font-size: 1.2rem;">${isOverdue ? '!' : remainingDays}</div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">${isOverdue ? 'בחריגה' : 'ימים נותרו'}</div>
+                            </div>
+                        </div>
+                        <div class="progress-bar"><div class="progress-bar-inner" style="width: ${progress}%;"></div></div>
+                        <div class="mini-map-container" id="map-card-${order['תעודה']}"></div>
+                        <div class="request-history"><h4 style="font-size: 1rem; margin-bottom: 5px;">היסטוריית בקשות</h4>${historyHTML || '<p style="font-size: 14px; color: var(--text-muted);">אין בקשות קודמות.</p>'}</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
+                            <button class="btn secondary" data-action="request-swap" data-order-id="${order['תעודה']}">החלפה</button>
+                            <button class="btn" data-action="request-pickup" data-order-id="${order['תעודה']}">פינוי</button>
+                        </div>`;
+                    return card;
+                }
+
+                function showProductDetailsModal(product) {
+                    const htmlContent = `
+                        <div class="modal-content">
+                            <h3 style="margin-bottom: 15px; border-bottom: 2px solid var(--brand); padding-bottom: 10px;">${product["שם מוצר"]}</h3>
+                            <div style="display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px;">
+                                <img src="${product.תמונה}" alt="${product["שם מוצר"]}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: var(--shadow);">
+                                <div>
+                                    <p style="font-size: 14px;"><strong>מק"ט:</strong> ${product["מק\"ט"] || 'אין'}</p>
+                                    <p style="font-size: 14px;"><strong>יח' מידה:</strong> ${product["יחידת מידה"] || 'יח\''}</p>
+                                    <p style="font-size: 14px;"><strong>יח' במשטח:</strong> ${product["יח' במשטח"] || '-'}</p>
+                                </div>
+                            </div>
+                            <h4 style="font-size: 1.1rem; margin-bottom: 10px;">מפרט טכני:</h4>
+                            <p style="font-size: 14px; color: var(--text-dark); white-space: pre-wrap;">${product["מפרט טכני"]}</p>
+                            <div style="margin-top:25px; text-align: center;">
+                                <button type="button" class="btn secondary" data-action="close-modal">סגור</button>
+                            </div>
+                        </div>
+                    `;
+                    dom.modalContainer.innerHTML = htmlContent;
+                    dom.modalContainer.classList.add('show');
+                    dom.modalContainer.querySelector('[data-action="close-modal"]').onclick = () => dom.modalContainer.classList.remove('show');
+                }
+                
+                async function sendClientRequest(requestType, details) {
+                     try {
+                        showToast("שולח בקשה...", '💬');
+                        await apiPost({ 
+                            action: 'clientRequest', timestamp: new Date().toISOString(),
+                            clientId: clientState.id, clientName: clientState.name, 
+                            requestType, details, orderType: 'container'
+                        });
+                        showToast("בקשתך נשלחה בהצלחה!", '✅');
+                        loadClientData(clientState.id, true);
+                    } catch (error) { 
+                        showToast(`שגיאה בשליחת הבקשה`, '❌'); 
+                    }
+                }
+                
+                function sendChatMessage(messageContent) {
+                    const messageTrimmed = messageContent.trim();
+                    if (!messageTrimmed) return;
+
+                    const userMessage = { sender: 'user', message: messageTrimmed, timestamp: new Date().toISOString() };
+                    clientState.chatHistory.push(userMessage);
+
+                    apiPost({ 
+                        action: 'logChatMessage', clientId: clientState.id, clientName: clientState.name,
+                        message: messageTrimmed, sender: 'Client'
+                    }).catch(error => console.error("Failed to log chat message:", error));
+
+                    renderChatPage();
+                }
+
+                function showFieldHint(elementId, isFocus) {
+                    const input = document.getElementById(elementId);
+                    const hintText = fieldHints[elementId];
+                    if (!input || !hintText) return;
+                    clearTimeout(activeHintTimeout);
+                    if (isFocus) {
+                        showToast(hintText, '💡');
+                        activeHintTimeout = setTimeout(() => {}, 5000); 
+                    }
+                }
+                
+                function updateFormView() {
+                    if (!dom.stepIndicators || dom.stepIndicators.length === 0) return; 
+                    const step = clientState.materialOrder.step;
+                    dom.formSteps.forEach((s, i) => s.classList.toggle('hidden', i + 1 !== step));
+                    dom.stepIndicators.forEach((ind, i) => ind.classList.toggle('step-active', i + 1 === step));
+                    dom.formBackBtn.style.visibility = step === 1 ? 'hidden' : 'visible';
+                    dom.formNextBtn.textContent = step === 3 ? "שלח הזמנה" : "הבא";
+
+                    if (step === 1) {
+                         document.querySelectorAll('#form-step-1 input, #form-step-1 select').forEach(input => {
+                            input.addEventListener('focus', () => showFieldHint(input.id, true));
+                            input.addEventListener('blur', () => showFieldHint(input.id, false));
+                         });
+                    } else if (step === 2) {
+                        renderOrderItems();
+                        if (dom.productSearch.value) dom.productSearch.dispatchEvent(new Event('input'));
+                        dom.productSearch.addEventListener('focus', () => showFieldHint('product-search', true));
+                        dom.productSearch.addEventListener('blur', () => showFieldHint('product-search', false));
+                    } else if (step === 3) {
+                        renderOrderSummary();
+                        const notesInput = document.getElementById('deliveryNotes');
+                        notesInput.addEventListener('focus', () => showFieldHint('deliveryNotes', true));
+                        notesInput.addEventListener('blur', () => showFieldHint('deliveryNotes', false));
+                    }
+                }
+                
+                function navigateForm(direction) {
+                    const currentStep = clientState.materialOrder.step;
+                    const newStep = currentStep + direction;
+                    if (direction > 0 && !validateFormStep(currentStep)) return;
+                    if (newStep < 1 || newStep > 3) return;
+                    clientState.materialOrder.step = newStep;
+                    updateFormView();
+                }
+
+                function validateFormStep(step) {
+                    const form = dom.materialsForm;
+                    if (step === 1) {
+                        const requiredFields = ['deliveryAddress', 'deliveryDate', 'contactName', 'contactPhone'];
+                        for (const fieldId of requiredFields) {
+                            if (!form[fieldId] || !form[fieldId].value.trim()) {
+                                showToast(`שדה ${form[fieldId].previousElementSibling.textContent} הוא חובה.`, '⚠️');
+                                form[fieldId].focus();
+                                return false;
+                            }
+                        }
+                    }
+                    if (step === 2) {
+                        if (clientState.materialOrder.items.length === 0) {
+                            showToast("אנא הוסף לפחות מוצר אחד להזמנה.", '⚠️');
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+
+                function handleProductSearch(e) {
+                    const query = e.target.value.toLowerCase().trim();
+                    if (query.length < 2) {
+                        dom.productSuggestions.innerHTML = '';
+                        return;
+                    }
+
+                    if (e.inputType === 'insertFromPaste') {
+                        parsePastedList(e.target.value);
+                        e.target.value = '';
+                        return;
+                    }
+
+                    const suggestions = clientState.productCatalog.filter(p => 
+                        (p["שם מוצר"] && p["שם מוצר"].toLowerCase().includes(query)) || 
+                        (p["מק\"ט"] && p["מק\"ט"].toString().toLowerCase().includes(query))
+                    ).slice(0, 5);
+                    renderSuggestions(suggestions);
+                }
+                
+                function handleProductSearchKeydown(e) {
+                     if (e.key === 'Enter') {
+                        e.preventDefault(); 
+                        const query = dom.productSearch.value.trim();
+                        if (query) {
+                             const foundSuggestion = clientState.productCatalog.find(p => p["מק\"ט"] == query || p["שם מוצר"]?.toLowerCase() == query.toLowerCase());
+                             if (foundSuggestion) {
+                                 addProductToOrder(foundSuggestion, 1);
+                             } else {
+                                 parsePastedList(query);
+                             }
+                             dom.productSearch.value = '';
+                             dom.productSuggestions.innerHTML = '';
+                        }
+                    }
+                }
+
+                function parsePastedList(text) {
+                     const lines = text.split('\n').filter(line => line.trim() !== '');
+                     let addedCount = 0;
+                     lines.forEach(line => {
+                         const match = line.match(/(\d+(\.\d+)?)\s*$/);
+                         let quantity = 1;
+                         let name = line;
+                         if (match) {
+                             quantity = parseFloat(match[1]) || 1;
+                             name = line.substring(0, match.index).trim();
+                         }
+                         const matchedProduct = clientState.productCatalog.find(p => p["שם מוצר"]?.toLowerCase().includes(name.toLowerCase()) || p["מק\"ט"]?.toString().includes(name));
+                         if (matchedProduct) {
+                             addProductToOrder(matchedProduct, quantity);
+                             addedCount++;
+                         } else {
+                             addProductToOrder({ 
+                                 "שם מוצר": name || 'פריט לא מזוהה', "מק\"ט": "N/A", "יחידת מידה": "יח'", isUnidentified: true, 
+                                 "יח' במשטח": 1, "בסיס": "יח'", "מפרט טכני": "פריט זה הוזן כטקסט חופשי.",
+                                 "תמונה": "https://placehold.co/100x100/718096/ffffff?text=?"
+                            }, quantity);
+                             addedCount++;
+                         }
+                     });
+                     if (addedCount > 0) {
+                         showToast(`${addedCount} פריטים נוספו להזמנה.`, '📝');
+                     }
+                }
+
+                function renderSuggestions(suggestions) {
+                    if (!suggestions.length) {
+                        dom.productSuggestions.innerHTML = `<div class="p-3 text-center text-text-muted">לא נמצאו מוצרים תואמים בקטלוג.</div>`;
+                        return;
+                    }
+                    dom.productSuggestions.innerHTML = suggestions.map(p => `
+                        <div class="p-3 hover:bg-gray-100 cursor-pointer flex justify-between items-center" data-sku="${p["מק\"ט"]}">
+                            <div data-action="add-product" data-sku="${p["מק\"ט"]}" style="flex-grow:1; cursor:pointer;">
+                                <p class="font-semibold">${p["שם מוצר"]}</p>
+                                <p class="text-sm text-text-muted">מק"ט: ${p["מק\"ט"] || 'אין'} | יח' מידה: ${p["יחידת מידה"]}</p>
+                            </div>
+                            <button class="text-brand hover:text-dark p-2" data-action="view-product-details" data-sku="${p["מק\"ט"]}" title="צפה במפרט">👁️</button>
+                             <button class="btn p-1 text-sm rounded-full mr-2" data-action="add-product" data-sku="${p["מק\"ט"]}">+ הוסף</button>
+                        </div>
+                    `).join('');
+                }
+                
+                function addProductToOrder(product, quantity = 1) {
+                    const sku = product["מק\"ט"];
+                    const existingItem = clientState.materialOrder.items.find(item => item["מק\"ט"] === sku && !item.isUnidentified);
+                    if(existingItem && !product.isUnidentified) {
+                        existingItem.quantity += quantity;
+                    } else {
+                         const productToAdd = product.isUnidentified ? product : clientState.productCatalog.find(p => p["מק\"ט"] === sku) || product;
+                         clientState.materialOrder.items.push({ ...productToAdd, quantity });
+                    }
+                    renderOrderItems();
+                }
+
+                function renderOrderItems() {
+                    if (!dom.orderItemsContainer) return;
+                    const items = clientState.materialOrder.items;
+                    if (items.length === 0) {
+                        dom.orderItemsContainer.innerHTML = `<p class="text-center text-text-muted">הוסף מוצרים לבחירתך</p>`;
+                        return;
+                    }
+                    dom.orderItemsContainer.innerHTML = items.map((item, index) => {
+                        const isUnidentified = item.isUnidentified;
+                        const totalUnits = (item["יח' במשטח"] > 1 && item["יחידת מידה"] !== item["בסיס"]) ? `(${item.quantity * item["יח' במשטח"]} ${item["בסיס"]})` : '';
+                        return `
+                        <div class="product-item flex items-center gap-4 p-3 border rounded-md shadow-sm ${isUnidentified ? 'unidentified' : ''}">
+                            <div class="flex-grow">
+                                <p class="font-bold">${item["שם מוצר"]} ${isUnidentified ? '<span class="text-yellow-600 font-sans text-lg" title="פריט בטקסט חופשי">⚠️</span>' : ''}</p>
+                                <p class="text-sm text-text-muted">מק"ט: ${item["מק\"ט"] || 'לא זוהה'}</p>
+                            </div>
+                            <div class="text-center flex items-center gap-2">
+                                <button class="text-brand hover:text-dark p-2" data-action="view-product-details" data-sku="${item["מק\"ט"]}" data-index="${index}" title="צפה במפרט">👁️</button>
+                                 <input type="number" value="${item.quantity}" min="0.1" step="any" class="form-input w-20 text-center p-1 text-base" data-index="${index}" data-action="update-quantity" onchange="window.updateItemQuantity(event)">
+                                 <p class="text-xs text-text-muted mt-1">${item["יחידת מידה"] || 'יח\''}</p>
+                            </div>
+                            <button class="text-red-500 hover:text-red-700 p-2" data-index="${index}" data-action="remove-item">&times;</button>
+                        </div>
+                        ${totalUnits ? `<p class="text-sm text-brand font-semibold text-left -mt-2 mr-4">${totalUnits}</p>` : ''}
+                        `;
+                    }).join('');
+                }
+                
+                window.updateItemQuantity = (e) => {
+                    const index = e.target.dataset.index;
+                    const newQuantity = parseFloat(e.target.value);
+                    if(index !== undefined && newQuantity > 0) {
+                        clientState.materialOrder.items[index].quantity = newQuantity;
+                        renderOrderItems();
+                    } else if (newQuantity <= 0) {
+                        removeItemFromOrder(parseInt(index));
+                    }
+                };
+
+                function removeItemFromOrder(index) {
+                    clientState.materialOrder.items.splice(index, 1);
+                    renderOrderItems();
+                }
+
+                function renderOrderSummary() {
+                    const form = dom.materialsForm;
+                    const deliveryDate = form.deliveryDate.value ? new Date(form.deliveryDate.value).toLocaleDateString('he-IL') : 'לא צוין';
+                    const contactPerson = form.contactName.value || 'לא צוין';
+                    const contactPhone = form.contactPhone.value || 'לא צוין';
+                    
+                    dom.summaryDetails.innerHTML = `<p><strong>לקוח:</strong> ${clientState.name}</p><p><strong>כתובת:</strong> ${form.deliveryAddress.value}</p><p><strong>תאריך אספקה:</strong> ${deliveryDate}</p><p><strong>סוג הובלה:</strong> ${form.transportType.value}</p><p><strong>איש קשר:</strong> ${contactPerson} (${contactPhone})</p>`;
+                    dom.summaryItems.innerHTML = clientState.materialOrder.items.map(item => {
+                        const totalUnitsText = (item["יח' במשטח"] > 1 && item["יחידת מידה"] !== item["בסיס"]) ? `(${item.quantity * item["יח' במשטח"]} ${item["בסיס"]})` : '';
+                        return `<div class="flex justify-between items-center text-sm ${item.isUnidentified ? 'text-yellow-600' : 'text-text-dark'}"><span class="font-semibold">${item["שם מוצר"]} ${item.isUnidentified ? '⚠️' : ''}</span><span class="font-bold">${item.quantity} ${item["יחידת מידה"] || 'יח\''} ${totalUnitsText}</span></div>`;
+                    }).join('');
+                    form.deliveryNotes.value = form.deliveryNotes.value || ''; 
+                }
+
+                async function submitMaterialsOrder() {
+                    const form = dom.materialsForm;
+                    const button = dom.formNextBtn;
+                    
+                    const orderData = {
+                        orderType: 'materials', clientName: clientState.name, clientId: clientState.id, 
+                        deliveryAddress: form.deliveryAddress.value, deliveryDate: form.deliveryDate.value,
+                        contactName: form.contactName.value, contactPhone: form.contactPhone.value.replace(/-/g, ''),
+                        transportType: form.transportType.value, notes: form.deliveryNotes.value,
+                        items: clientState.materialOrder.items, status: 'חדש'
+                    };
+
+                    button.disabled = true;
+                    button.innerHTML = '<span style="animation: spin 1s linear infinite; display: inline-block;">🔄</span> שולח...';
+                    showToast('🔄 שולח הזמנה לטיפול...');
+                    
+                    try {
+                        const response = await apiPost({ action: 'submitMaterialsOrder', order: orderData });
+                        if (response.status === 'success') {
+                            showToast('✅ ההזמנה נשלחה בהצלחה!', `הסטטוס המעודכן הוא: ${response.newStatus || 'חדשה'}. עקוב בהיסטוריה.`);
+                            form.reset();
+                            clientState.materialOrder.items = [];
+                            clientState.materialOrder.step = 1;
+                            loadClientData(clientState.id, true);
+                            navigateTo('page-home'); 
+                        } else {
+                            throw new Error(response.message || 'שגיאה כללית בשליחת ההזמנה');
+                        }
+                    } catch (error) {
+                        console.error("Materials Submission failed:", error);
+                        showToast("❌ שגיאה בשליחת ההזמנה: " + error.message, 'error');
+                    } finally {
+                        button.disabled = false;
+                        button.textContent = 'הבא';
+                    }
+                }
+                
+                function openOrderModal(actionType, order) {
+                     const isNewOrder = !order;
+                     let title = isNewOrder ? "הזמנת מכולה חדשה" : `בקשת ${actionType}`;
+                     let addressContent = isNewOrder ? `<div class="form-group"><label>בחר כתובת או הקלד חדשה</label><select id="address-select" class="form-input" style="margin-top:5px;"><option value="">-- בחר כתובת --</option>${Array.from(clientState.addresses).map(a => `<option value="${a}">${a}</option>`).join('')}<option value="new">כתובת חדשה...</option></select></div><div id="new-address-group" style="display:none; margin-top:10px;"><input type="text" id="new-address" class="form-input" placeholder="עיר, רחוב, מספר בית"></div><div style="margin-top:10px;"><input type="text" id="placement-location" class="form-input" placeholder="מיקום מדויק להצבה (ליד השער וכו')"></div>` : `<p style="margin-bottom: 20px;">עבור מכולה בכתובת: <strong>${order['כתובת']}</strong></p>`;
+                     dom.modalContainer.innerHTML = `<div class="modal-content"><h3 style="margin-bottom: 20px;">${title}</h3>${addressContent}<form id="order-request-form"><div style="margin-top:15px;"><label>הערות</label><textarea id="order-notes" placeholder="לדוגמה: נא לתאם הגעה טלפונית..." class="form-input" style="height:80px; margin-top:5px;"></textarea></div><div style="display: flex; gap: 10px; margin-top:20px;"><button type="button" class="btn secondary" data-action="close-modal" style="flex:1;">ביטול</button><button type="submit" class="btn" style="flex:2;">שלח בקשה</button></div></form></div>`;
+                     dom.modalContainer.classList.add('show');
+                    if (isNewOrder) { document.getElementById('address-select').onchange = (e) => { document.getElementById('new-address-group').style.display = e.target.value === 'new' ? 'block' : 'none'; }; }
+                    dom.modalContainer.querySelector('[data-action="close-modal"]').onclick = () => dom.modalContainer.classList.remove('show');
+                    document.getElementById('order-request-form').onsubmit = (e) => {
+                        e.preventDefault();
+                        let details, address;
+                        const notes = document.getElementById('order-notes').value;
+                        if(isNewOrder) {
+                            const newAddress = document.getElementById('new-address').value.trim();
+                            const placement = document.getElementById('placement-location').value.trim();
+                            address = newAddress || document.getElementById('address-select').value;
+                            if (!address || address === 'new' || address === '') { showToast('אנא בחר או הקלד כתובת.', 'error'); return; }
+                            details = `כתובת: ${address}. מיקום להצבה: ${placement || 'לא צוין'}. הערות: ${notes || 'אין'}`;
+                        } else { 
+                            details = `מכולה קיימת: ${order['תעודה']}. כתובת: ${order['כתובת']}. הערות: ${notes || 'אין'}`; 
+                        }
+                        sendClientRequest(actionType, details);
+                        dom.modalContainer.classList.remove('show');
+                    };
+                }
+
+                function openHistoryDetailModal(order) {
+                    if (!order) return;
+                    
+                    const isContainer = order.orderType === 'container';
+                    const address = order['כתובת'] || order['פרטי אספקה'];
+                    const mainDetails = `<p><strong>סוג:</strong> ${isContainer ? 'מכולה' : 'חומרי בניין'}</p><p><strong>פרויקט:</strong> ${order['פרוייקט'] || order['שם פרויקט'] || '-'}</p><p><strong>כתובת:</strong> ${address}</p><p><strong>תאריך:</strong> ${new Date(order['תאריך הזמנה'])?.toLocaleDateString('he-IL')}</p><p><strong>סטטוס:</strong> <span class="status-badge ${getStatusInfo(order['סטטוס']).class}">${getStatusInfo(order['סטטוס']).icon} ${getStatusInfo(order['סטטוס']).text}</span></p>`;
+                    let itemsHtml = '';
+                    if (!isContainer && order.items && order.items.length) {
+                        itemsHtml = `<h4 style="font-size: 1.1rem; margin-top: 15px; border-top: 1px solid var(--border); padding-top: 10px;">פריטים שהוזמנו:</h4>` + order.items.map(item => `<p style="font-size: 14px;">- ${item.name || item["שם מוצר"]}: ${item.quantity} ${item.unit || item["יחידת מידה"]}</p>`).join('');
+                    }
+
+                    dom.modalContainer.innerHTML = `<div class="modal-content" style="padding:0;"><div style="padding: 20px 20px 0 20px;"><h3 style="margin-bottom: 10px;">פרטי הזמנה ${order['תעודה']}</h3>${mainDetails}${itemsHtml}</div><div id="history-map" style="height: 200px; width: 100%; margin-top: 15px; border-bottom-left-radius: var(--radius); border-bottom-right-radius: var(--radius);"></div></div>`;
+                    dom.modalContainer.classList.add('show');
+                    renderLeafletMap(document.getElementById('history-map'), address);
+                    dom.modalContainer.onclick = (e) => { if(e.target === dom.modalContainer) dom.modalContainer.classList.remove('show'); };
+                }
+
+                function renderLeafletMap(container, address) { 
+                     if (!container || !address) return;
+                    const mapId = container.id;
+                    if (mapInstances[mapId]) mapInstances[mapId].remove();
+                    container.innerHTML = '<div style="text-align:center; padding-top: 50px; color: var(--text-muted);">טוען מפה...</div>';
+                    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data && data.length > 0) {
+                                container.innerHTML = '';
+                                const { lat, lon } = data[0];
+                                const map = L.map(container, { zoomControl: false, scrollWheelZoom: false, dragging: true, doubleClickZoom: false }).setView([lat, lon], 15);
+                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                                L.marker([lat, lon]).addTo(map);
+                                mapInstances[mapId] = map;
+                            } else { container.innerHTML = '<div style="text-align:center; padding-top: 50px; color: var(--text-muted);">כתובת לא נמצאה.</div>'; }
+                        }).catch(err => { container.innerHTML = '<div style="text-align:center; padding-top: 50px; color: var(--text-muted);">שגיאה בטעינת מפה.</div>'; });
+                }
+                
+                window.showToast = (message, icon = 'ℹ️') => { 
+                    const toast = document.createElement('div');
+                    toast.className = `toast`;
+                    const textLength = message.length;
+                    const baseDuration = 3000;
+                    const dynamicDuration = baseDuration + Math.max(0, textLength - 30) * 50; 
+                    toast.innerHTML = `<span class="toast-icon">${icon}</span> <span>${message}</span>`;
+                    dom.toastContainer.appendChild(toast);
+                    if (dom.toastContainer) {
+                        setTimeout(() => toast.classList.add('show'), 100);
+                        setTimeout(() => {
+                            toast.classList.remove('show');
+                            toast.addEventListener('transitionend', () => toast.remove());
+                        }, dynamicDuration);
+                    } else {
+                         console.log(`[TOAST] ${icon} ${message}`);
+                    }
+                }
+                
+                function setupEventListeners() {
+                    dom.body.addEventListener('click', (e) => {
+                        const actionElement = e.target.closest('[data-action]');
+                        if (!actionElement) {
+                            if(!e.target.closest('#profile-container')) dom.profileContainer.classList.remove('active');
+                            if(e.target.classList.contains('modal-overlay')) dom.modalContainer.classList.remove('show');
+                            return;
+                        };
+
+                        const action = actionElement.dataset.action;
+                        switch(action) {
+                            case 'navigate': navigateTo(actionElement.dataset.page); break;
+                            case 'help-fab': dom.helpModal.classList.add('show'); break;
+                            case 'help-close': dom.helpModal.classList.remove('show'); break;
+                            case 'toggle-profile': dom.profileContainer.classList.toggle('active'); break;
+                            case 'logout': 
+                                localStorage.clear(); 
+                                if (window.OneSignalDeferred) {
+                                    window.OneSignalDeferred.push(function(OneSignal) {
+                                        OneSignal.removeExternalUserId();
+                                    });
+                                }
+                                window.location.reload(); 
+                                break;
+                            case 'new-order': openOrderModal('הזמנה חדשה'); break;
+                            case 'refresh-data':
+                                if (clientState.id) {
+                                    const btn = actionElement;
+                                    btn.style.transition = 'transform 0.5s ease';
+                                    btn.style.transform = 'rotate(360deg)';
+                                    btn.disabled = true;
+                                    showToast("מרענן נתונים...", '🔄');
+                                    loadClientData(clientState.id, true)
+                                        .then(() => showToast("הנתונים עודכנו!", '✅'))
+                                        .catch((err) => showToast("שגיאה ברענון הנתונים", '❌'))
+                                        .finally(() => {
+                                           setTimeout(() => {
+                                                btn.style.transition = '';
+                                                btn.style.transform = '';
+                                                btn.disabled = false;
+                                            }, 500);
+                                        });
+                                }
+                                break;
+                            case 'filter-history': renderHistoryPage(actionElement.dataset.project); break;
+                            case 'show-history-details': {
+                                const orderId = actionElement.dataset.orderId;
+                                const orderType = actionElement.dataset.orderType;
+                                const order = (orderType === 'container' ? clientState.orders : clientState.materialOrders).find(o => o['תעודה'] == orderId);
+                                openHistoryDetailModal(order);
+                                break;
+                            }
+                            case 'request-swap': case 'request-pickup': {
+                                const orderId = actionElement.dataset.orderId;
+                                const order = clientState.orders.find(o => o['תעודה'] == orderId);
+                                if (order) openOrderModal(action === 'request-swap' ? 'החלפה' : 'פינוי', order);
+                                break;
+                            }
+                            case 'add-product': {
+                                const sku = actionElement.dataset.sku || actionElement.closest('[data-sku]')?.dataset.sku;
+                                const product = clientState.productCatalog.find(p => p["מק\"ט"] == sku);
+                                if (product) addProductToOrder(product);
+                                dom.productSuggestions.innerHTML = '';
+                                dom.productSearch.value = '';
+                                break;
+                            }
+                            case 'remove-item': removeItemFromOrder(parseInt(actionElement.dataset.index)); break;
+                            case 'view-product-details': {
+                                const sku = actionElement.dataset.sku;
+                                const product = clientState.productCatalog.find(p => p["מק\"ט"] == sku) || clientState.materialOrder.items[actionElement.dataset.index];
+                                if (product) showProductDetailsModal(product);
+                                break;
+                            }
+                        }
+                    });
+
+                    dom.body.addEventListener('submit', e => {
+                        if (e.target.id === 'chat-form') {
+                            e.preventDefault();
+                            const msgInput = document.getElementById('chat-message');
+                            if (msgInput.value.trim()) {
+                                sendChatMessage(msgInput.value);
+                                msgInput.value = '';
+                            }
+                        }
+                    });
+                    
+                    dom.formNextBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        if (clientState.materialOrder.step === 3) {
+                            submitMaterialsOrder();
+                        } else {
+                            navigateForm(1);
+                        }
+                    });
+                    dom.formBackBtn.addEventListener('click', () => navigateForm(-1));
+                    
+                    dom.productSearch.addEventListener('input', handleProductSearch);
+                    dom.productSearch.addEventListener('keydown', handleProductSearchKeydown);
+                    
+                    dom.body.addEventListener('change', e => {
+                        if (e.target.dataset.action === 'update-quantity') {
+                            window.updateItemQuantity(e);
+                        }
+                    });
+                }
+                
+                clientState.materialOrder.step = 1;
+                updateFormView();
+
+                initApp();
+            });
+        } catch (e) {
+            document.body.innerHTML = `<div style="padding: 20px; text-align: center;"><h1>אפליקציה נתקלה בשגיאה חמורה</h1><p>נסה לרענן את הדף.</p></div>`
+            console.error("Critical application error:", e);
+        }
+    })();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,27 @@
+{
+  "name": "אזור אישי - ח.סבן",
+  "short_name": "ח.סבן",
+  "start_url": "/index2.html",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#0b72b9",
+  "description": "אפליקציית ניהול לקוח עבור ח.סבן. עקוב אחר מכולות, הזמן חומרים וצור קשר.",
+  "icons": [
+    {
+      "src": "https://i.postimg.cc/2SbDgD1B/1.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.postimg.cc/2SbDgD1B/1.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.postimg.cc/2SbDgD1B/1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
