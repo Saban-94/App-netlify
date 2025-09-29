@@ -1541,7 +1541,92 @@
             console.error("Critical application error:", e);
         }
     })();
+            function showLoadingScreen() {
+        document.getElementById('loading-overlay').style.display = 'flex';
+    }
+
+    function hideLoadingScreen() {
+        document.getElementById('loading-overlay').style.display = 'none';
+    }
+
+    /**
+     * פונקציה לשמירת והגדרת מזהה לקוח ב-OneSignal (External ID)
+     * התיקון הקריטי: משתמשים ב-OneSignal.push() כדי להבטיח שהפונקציה setExternalUserId
+     * תיקרא רק לאחר שה-SDK של OneSignal נטען לחלוטין.
+     */
+    function setOneSignalExternalId(clientId) {
+        if (typeof OneSignal !== 'undefined') {
+            console.log('OneSignal Ready. Attempting to set External ID:', clientId);
+            
+            // שימוש ב-push כדי לדחות את הקריאה עד שה-SDK יאתחל
+            OneSignal.push(function() {
+                OneSignal.setExternalUserId(String(clientId));
+                console.log('OneSignal External ID set successfully:', clientId);
+            });
+        } else {
+            console.error('OneSignal SDK not loaded yet. Retrying in 500ms...');
+            // ניסיון חוזר במידה ו-OneSignal עדיין לא הוגדר (אם יש בעיית סנכרון)
+            setTimeout(() => setOneSignalExternalId(clientId), 500);
+        }
+    }
+
+    /**
+     * פונקציה לטעינת נתוני לקוח
+     * התיקון: בדיקה מפורשת של clientId לפני שמנסים לטעון מידע או להגדיר OneSignal
+     */
+    async function loadClientData() {
+        const clientId = localStorage.getItem('saban_client_id');
+        if (!clientId) {
+            console.error("Error: Client ID not found in localStorage. Cannot load client data or set OneSignal ID.");
+            // טיפול במקרה של לקוח לא מחובר: הפניה למסך כניסה/רישום
+            window.location.href = 'login.html'; // נניח שיש לך עמוד כניסה
+            hideLoadingScreen();
+            return;
+        }
+
+        console.log("Found Client ID:", clientId);
+        
+        // **קריאה לפונקציה שתגדיר את ה-External ID של OneSignal**
+        setOneSignalExternalId(clientId);
+        
+        // ... המשך הקוד לטעינת נתונים ...
+        
+        try {
+            const response = await fetch(`${SERVER_URL}?action=getClientData&clientId=${clientId}`);
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                // ... עיבוד הנתונים של הלקוח
+                // לדוגמה: updateClientUI(data.client);
+                hideLoadingScreen();
+            } else {
+                console.error("Failed to load client data:", data.message);
+                // זורק שגיאה אם הלקוח לא נמצא בשרת, כפי שדיווחת
+                throw new Error("Client not found on server."); 
+            }
+        } catch (error) {
+            console.error('Failed to load client data:', error);
+            // הצגת הודעת שגיאה מותאמת אישית למשתמש במקום alert()
+            document.getElementById('message-box-content').textContent = `שגיאה בטעינת נתונים: ${error.message}. נסה להתחבר שוב.`;
+            document.getElementById('message-box').classList.remove('hidden');
+            hideLoadingScreen();
+        }
+    }
     </script>
+    <script>
+    // ודא ש-loadClientData נקראת כאשר המסמך מוכן
+    document.addEventListener('DOMContentLoaded', loadClientData);
+
+    // אתחול OneSignal - נשאר כפי שהיה במיקום ההתחלתי שלך (כנראה בסוף ה-body)
+    // **ודא שקוד זה ממוקם לפני הקריאה ל-loadClientData או ב-head**
+    window.OneSignal = window.OneSignal || [];
+    OneSignal.push(function() {
+      OneSignal.init({
+        appId: "480bbe6d-0f2e-4669-85e1-039271c73fa6" // ודא שזהו ה-App ID הנכון שלך
+      });
+    });
+    
+</script>
 </body>
 </html>
 
