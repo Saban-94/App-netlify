@@ -1,7 +1,7 @@
 {
   "name": "אזור אישי - ח.סבן",
   "short_name": "ח.סבן",
-  "start_url": "/index2.html",
+  "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#f0f2f5",
   "theme_color": "#0b72b9",
