@@ -694,6 +694,21 @@
                     }
                 }
                 
+                 function setOneSignalExternalId(clientId) {
+        if (typeof OneSignal !== 'undefined') {
+            console.log('OneSignal Ready. Attempting to set External ID:', clientId);
+            
+            // שימוש ב-push כדי לדחות את הקריאה עד שה-SDK יאתחל
+            OneSignal.push(function() {
+                OneSignal.setExternalUserId(String(clientId));
+                console.log('OneSignal External ID set successfully:', clientId);
+            });
+        } else {
+            console.error('OneSignal SDK not loaded yet. Retrying in 500ms...');
+            // ניסיון חוזר במידה ו-OneSignal עדיין לא הוגדר (אם יש בעיית סנכרון)
+            setTimeout(() => setOneSignalExternalId(clientId), 500);
+        }
+    }
                 async function apiPost(body) {
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 15000);
