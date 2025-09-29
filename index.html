@@ -3,315 +3,446 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>אזור אישי - ח.סבן</title>
-    <meta name="theme-color" content="#ffffff"/>
-    <!-- שימוש ב-Tailwind CSS לקבלת מראה נקי ומודרני -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>ח.סבן - הזמנות בצ'אט</title>
+    <meta name="theme-color" content="#128C7E"/>
     <link rel="manifest" href="./manifest.json">
     <link rel="apple-touch-icon" href="https://i.postimg.cc/2SbDgD1B/1.png">
     <link rel="icon" href="https://i.postimg.cc/2SbDgD1B/1.png">
-    
+
     <!-- OneSignal SDK for Push Notifications -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        async function setOneSignalExternalId(clientId) {
+            if (!clientId || !window.OneSignalDeferred) return;
+            window.OneSignalDeferred.push(async function(OneSignal) {
+                try {
+                    await OneSignal.setExternalUserId(String(clientId));
+                    console.log(`OneSignal: External User ID set to: ${clientId}`);
+                } catch(e) {
+                    console.error("OneSignal External ID setup failed:", e);
+                }
+            });
+        }
+        
+        OneSignalDeferred.push(async function(OneSignal) {
+            try {
+                await OneSignal.init({
+                    appId: "acc8a2bc-d54e-4261-b3d2-cc5c5f7b39d3", // Your OneSignal App ID
+                    safari_web_id: "web.onesignal.auto.5f4f9ed9-fb2e-4d6a-935d-81aa46fccce0",
+                    allowLocalhostAsSecureOrigin: true,
+                });
+                const storedClientId = localStorage.getItem('saban_client_id');
+                if (storedClientId) {
+                    setOneSignalExternalId(storedClientId);
+                }
+            } catch (error) {
+                console.error("OneSignal Initialization FAILED:", error.message);
+            }
+        });
+    </script>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --whatsapp-bg: #E5DDD5;
+            --whatsapp-bg-chat: #ECE5DD;
+            --whatsapp-header: #075E54;
+            --whatsapp-teal: #128C7E;
+            --whatsapp-green-light: #25D366;
+            --whatsapp-blue: #34B7F1;
+            --outgoing-bubble: #DCF8C6;
+            --incoming-bubble: #FFFFFF;
+            --text-dark: #000000;
+            --text-light: #4a5568;
+            --text-muted: #667781;
+            --border: #e2e8f0;
+            --radius: 7.5px;
+            --shadow: 0 1px 1px 0 rgba(11,20,26,.1);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; overflow: hidden; }
+        body { font-family: 'Assistant', sans-serif; background-color: var(--whatsapp-bg-chat); color: var(--text-dark); display: flex; flex-direction: column; overscroll-behavior-y: contain; visibility: hidden; }
+        body.loaded { visibility: visible; }
+
+        .app-shell { display: flex; flex-direction: column; height: 100%; max-width: 800px; margin: 0 auto; background-color: var(--whatsapp-bg); }
+
+        .app-header {
+            flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 15px; background-color: var(--whatsapp-header); color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .app-header-title { font-size: 1.2rem; font-weight: 700; }
+        .header-avatar { width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; }
+
+        .chat-container {
+            flex-grow: 1; overflow-y: auto; padding: 15px;
+            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+            display: flex; flex-direction: column-reverse; /* Important for chat layout */
+        }
+        .messages-wrapper { display: flex; flex-direction: column; gap: 8px; }
+
+        .message-bubble {
+            max-width: 80%; padding: 8px 12px; border-radius: var(--radius);
+            box-shadow: var(--shadow); position: relative; animation: popIn 0.3s ease-out;
+            word-wrap: break-word;
+        }
+        .message-bubble.outgoing { background-color: var(--outgoing-bubble); align-self: flex-start; border-bottom-left-radius: 0; }
+        .message-bubble.incoming { background-color: var(--incoming-bubble); align-self: flex-end; border-bottom-right-radius: 0; }
+        .message-bubble.system {
+            background-color: #E1F2FB; align-self: center; font-size: 0.8rem;
+            color: var(--text-muted); text-align: center; margin: 10px 0;
+            padding: 5px 15px; border-radius: 20px; font-weight: 600;
+        }
+        .message-content { white-space: pre-wrap; }
+        .message-timestamp {
+            font-size: 0.7rem; color: var(--text-muted);
+            margin-top: 4px; text-align: left;
+        }
+        
+        .order-card {
+            background: #f7f7f7; border: 1px solid var(--border);
+            border-left: 4px solid var(--whatsapp-blue); padding: 10px; border-radius: 5px; margin-top: 8px;
+        }
+        .order-card-title { font-weight: 700; }
+        .order-card-item { font-size: 0.9rem; }
+
+        .chat-input-area {
+            flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+            padding: 10px; background-color: #f0f0f0; border-top: 1px solid #ddd;
+        }
+        .chat-input {
+            flex-grow: 1; border: none; padding: 12px 15px; border-radius: 25px;
+            font-family: inherit; font-size: 1rem; resize: none;
+            max-height: 100px; overflow-y: auto;
+        }
+        .chat-btn {
+            width: 45px; height: 45px; border-radius: 50%; border: none;
+            background-color: var(--whatsapp-teal); color: white;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: background-color 0.2s;
+        }
+        .chat-btn svg { width: 24px; height: 24px; }
+
+        .modal-overlay { position: fixed; inset: 0; background-color: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: opacity 0.3s; }
+        .modal-overlay.show { opacity: 1; visibility: visible; }
+        .modal-content { background-color: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 400px; animation: popIn 0.3s; }
+        .form-input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 16px; }
+
+        #splash-screen { position: fixed; inset: 0; z-index: 9999; background-color: #f8f9fa; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s; }
+        #splash-logo { width: 100px; height: 100px; }
+        .splash-loader { width: 40px; height: 40px; border: 4px solid rgba(0,0,0,0.1); border-top-color: var(--whatsapp-teal); border-radius: 50%; animation: spin 1s linear infinite; margin-top: 20px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        #toast { position: fixed; top: 0; left: 0; right: 0; background-color: #fff8e1; color: #6b4f00; padding: 12px; text-align: center; font-weight: 600; z-index: 5000; transform: translateY(-100%); transition: transform 0.3s; }
+        #toast.show { transform: translateY(0); }
+    </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-
-    <div id="app-container" class="max-w-4xl mx-auto p-4 sm:p-6">
-        <h1 class="text-3xl font-bold text-center text-blue-700 mb-6 border-b pb-2">אפליקציית הזמנות ובנייה</h1>
-        
-        <!-- מידע לקוח - מוצג לאחר טעינת נתונים -->
-        <div id="client-info-card" class="bg-white p-6 rounded-xl shadow-lg mb-6 hidden">
-            <h2 class="text-xl font-semibold mb-2 text-gray-800">ברוך הבא, <span id="client-name"></span></h2>
-            <p class="text-gray-600">מספר לקוח: <span id="client-id-display"></span></p>
-            <p class="text-gray-600">פרויקט פעיל: <span id="client-project"></span></p>
-        </div>
-
-        <!-- קטלוג מוצרים - טופס לדוגמה -->
-        <div id="catalog-section" class="bg-white p-6 rounded-xl shadow-lg mb-6">
-            <h2 class="text-2xl font-semibold mb-4 text-gray-800">קטלוג מוצרים (<span id="catalog-count">0</span> פריטים)</h2>
-            <div id="product-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <p class="text-gray-500" id="catalog-loading">טוען קטלוג...</p>
-                <!-- מוצרים יוצגו כאן -->
+<body>
+    <div class="app-shell" style="display: none;">
+        <header class="app-header">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img id="profile-avatar" src="" alt="Profile" class="header-avatar">
+                <div id="client-name-header" class="app-header-title">...</div>
             </div>
-            <button id="submit-order-btn" onclick="submitOrder()" class="mt-6 w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition shadow-md" style="display:none;">שלח הזמנה</button>
-        </div>
-
-        <!-- טופס שליחת הודעה/צ'אט -->
-        <div id="chat-section" class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-2xl font-semibold mb-4 text-gray-800">שליחת הודעה לצוות</h2>
-            <input type="text" id="chat-message" placeholder="הקלד הודעה..." class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button onclick="sendMessage()" class="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition shadow-md">שלח הודעה</button>
-            <div id="chat-status" class="mt-2 text-center text-sm"></div>
-        </div>
-        
-    </div>
-
-    <!-- הודעת מערכת מותאמת אישית במקום alert() -->
-    <div id="message-box" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
-            <p id="message-box-content" class="text-gray-700 text-lg mb-4"></p>
-            <button onclick="document.getElementById('message-box').classList.add('hidden')" 
-                    class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
-                סגור
+            <button id="history-btn" style="background:none; border:none; color:white;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6m0-4V4m6 12v-2m0-4V4m-6 12v-4m0-4V4"/></svg>
             </button>
-        </div>
+        </header>
+
+        <main id="chat-container" class="chat-container">
+            <div id="messages-wrapper" class="messages-wrapper">
+                <!-- Messages will be injected here by JavaScript -->
+            </div>
+        </main>
+
+        <footer class="chat-input-area">
+            <button id="send-btn" class="chat-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+            <textarea id="chat-input" placeholder="הקלד רשימת מוצרים או הודעה..." rows="1"></textarea>
+            <button id="gps-btn" class="chat-btn" style="background-color: var(--whatsapp-blue);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+            </button>
+        </footer>
     </div>
 
-    <!-- מסך טעינה גלובלי -->
-    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-75 hidden flex items-center justify-center z-[100]">
-        <div class="flex flex-col items-center">
-            <svg class="animate-spin h-8 w-8 text-blue-600 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p class="text-blue-600">טוען נתונים...</p>
-        </div>
-    </div>
-
+    <div id="splash-screen"><img id="splash-logo" src="https://i.postimg.cc/2SbDgD1B/1.png" alt="Logo"><div class="splash-loader"></div></div>
+    <div id="modal-container" class="modal-overlay"></div>
+    <div id="toast"></div>
 
     <script>
-        // **תיקון קריטי: הגדרת משתנים גלובליים בראש הקובץ**
-        // חובה להחליף את הכתובת הבאה לכתובת הפריסה של Google Apps Script
-        const SERVER_URL = "https://script.google.com/macros/s/AKfycbx8gTM7JzhavujM_uT9rRxFqqBKQ-X8reNvDgkI6Vqq0ch9vF03Z2ggOjB31d7h-BimFQ/exec"; 
-        
-        // --- קוד JavaScript פנימי ---
-        
-        /** מציג מסך טעינה */
-        function showLoadingScreen() {
-            const loadingOverlay = document.getElementById('loading-overlay');
-            if (loadingOverlay) loadingOverlay.style.display = 'flex';
-        }
+    (() => {
+        document.addEventListener('DOMContentLoaded', () => {
+            const API_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL"; // <<<--- !!! חובה להחליף !!!
+            let clientState = { id: null, name: null, avatar: null, chatHistory: [] };
+            const dom = {};
 
-        /** מסתיר מסך טעינה */
-        function hideLoadingScreen() {
-            const loadingOverlay = document.getElementById('loading-overlay');
-            if (loadingOverlay) loadingOverlay.style.display = 'none';
-        }
-
-        /** מציג הודעת מערכת */
-        function showMessage(content) {
-            const messageBoxContent = document.getElementById('message-box-content');
-            const messageBox = document.getElementById('message-box');
-            if (messageBoxContent && messageBox) {
-                messageBoxContent.textContent = content;
-                messageBox.classList.remove('hidden');
+            function initApp() {
+                document.body.classList.add('loaded');
+                cacheDomElements();
+                const storedClientId = localStorage.getItem('saban_client_id');
+                if (storedClientId) {
+                    loadClientData(storedClientId);
+                } else {
+                    dom.splashScreen.style.display = 'none';
+                    promptForClientId();
+                }
             }
-        }
 
-        /**
-         * פונקציה לשמירת והגדרת מזהה לקוח ב-OneSignal (External ID)
-         */
-        function setOneSignalExternalId(clientId) {
-            // בדיקה אם ה-SDK של OneSignal נטען (OneSignalDeferred)
-            if (window.OneSignalDeferred) {
-                console.log('OneSignal Ready. Attempting to set External ID:', clientId);
-                
-                // שימוש ב-push כדי לדחות את הקריאה עד שה-SDK יאתחל
-                window.OneSignalDeferred.push(function(OneSignal) {
-                    OneSignal.setExternalUserId(String(clientId))
-                        .then(() => console.log('OneSignal External ID set successfully:', clientId))
-                        .catch(err => console.error('Error setting OneSignal External ID:', err));
+            function cacheDomElements() {
+                Object.assign(dom, {
+                    appShell: document.querySelector('.app-shell'),
+                    splashScreen: document.getElementById('splash-screen'),
+                    modalContainer: document.getElementById('modal-container'),
+                    toast: document.getElementById('toast'),
+                    clientNameHeader: document.getElementById('client-name-header'),
+                    profileAvatar: document.getElementById('profile-avatar'),
+                    messagesWrapper: document.getElementById('messages-wrapper'),
+                    chatInput: document.getElementById('chat-input'),
+                    sendBtn: document.getElementById('send-btn'),
+                    gpsBtn: document.getElementById('gps-btn'),
+                    historyBtn: document.getElementById('history-btn'),
+                    chatContainer: document.getElementById('chat-container'),
                 });
-            } else {
-                console.error('OneSignal Deferred not found. Retrying in 500ms...');
-                setTimeout(() => setOneSignalExternalId(clientId), 500);
-            }
-        }
-
-        /**
-         * טעינת נתוני לקוח והפעלת OneSignal
-         */
-        async function loadClientData() {
-            showLoadingScreen();
-            
-            const clientId = localStorage.getItem('saban_client_id');
-
-            if (!clientId) {
-                console.error("Error: Client ID not found in localStorage. Assuming guest or not logged in.");
-                showMessage(`שגיאה: מספר לקוח לא נמצא בזיכרון. אנא התחבר מחדש.`);
-                hideLoadingScreen();
-                return;
             }
 
-            console.log("Found Client ID:", clientId);
-            
-            // **קריאה לפונקציה שתגדיר את ה-External ID של OneSignal**
-            setOneSignalExternalId(clientId);
-            
-            // טעינת נתוני לקוח מהשרת
-            try {
-                const response = await fetch(`${SERVER_URL}?action=getClientData&clientId=${clientId}`);
-                const data = await response.json();
-                
-                if (data.status === 'success' && data.client) {
-                    document.getElementById('client-name').textContent = data.client.שם_לקוח || 'לקוח';
-                    document.getElementById('client-id-display').textContent = clientId;
-                    document.getElementById('client-project').textContent = data.client.פרוייקט || 'לא הוגדר';
-                    document.getElementById('client-info-card').classList.remove('hidden');
-                } else {
-                    showMessage(`שגיאה בטעינת נתונים: הלקוח ${clientId} לא נמצא בשרת.`);
-                    throw new Error("Client data not found or server error."); 
+            async function apiPost(body) {
+                try {
+                    const response = await fetch(API_URL, { method: 'POST', mode: 'cors', body: JSON.stringify(body), cache: 'no-cache', headers: { 'Content-Type': 'text/plain' } });
+                    if (!response.ok) throw new Error(`Network error (Status ${response.status})`);
+                    const text = await response.text();
+                    // Handle potential HTML error pages from Apps Script
+                    if (text.trim().startsWith('<')) throw new Error('Invalid server response. Check Apps Script URL and deployment.');
+                    return JSON.parse(text);
+                } catch (error) {
+                    console.error("API Post Error:", error);
+                    showToast(`שגיאת שרת: ${error.message}`);
+                    throw error;
                 }
-            } catch (error) {
-                console.error('Failed to load client data:', error);
-                showMessage(`שגיאה קריטית בטעינת נתונים: ${error.message}. ודא שכתובת השרת נכונה.`);
-            } finally {
-                await loadProductCatalog(); // טען קטלוג בכל מקרה
-                hideLoadingScreen();
             }
-        }
-        
-        /**
-         * פונקציה לטעינת קטלוג מוצרים - תיקון לקריאה מגליון מוצרים
-         */
-        async function loadProductCatalog() {
-            const productListElement = document.getElementById('product-list');
-            const catalogLoading = document.getElementById('catalog-loading');
-            
-            if (catalogLoading) catalogLoading.textContent = "טוען קטלוג...";
-            productListElement.innerHTML = ''; // מנקה פריטים ישנים
 
-            try {
-                // **תיקון: ודא שהאקשן הוא getProductCatalog כפי שצפוי ב-Code.js**
-                const response = await fetch(`${SERVER_URL}?action=getProductCatalog`);
-                const data = await response.json();
+            function promptForClientId() {
+                dom.modalContainer.innerHTML = `<div class="modal-content"><h3>ברוכים הבאים</h3><p style="margin: 10px 0 20px 0;">כדי להתחבר, אנא הזן מספר לקוח או טלפון.</p><form id="login-form"><input type="text" id="login-identifier" placeholder="מס' לקוח / טלפון" required class="form-input" style="margin-bottom: 15px;"><button type="submit" class="chat-btn" style="width:100%; border-radius:8px;">התחבר</button></form></div>`;
+                dom.modalContainer.classList.add('show');
                 
-                if (data.status === 'success' && Array.isArray(data.catalog)) {
-                    document.getElementById('catalog-count').textContent = data.catalog.length;
-                    
-                    data.catalog.forEach(product => {
-                        const productCard = document.createElement('div');
-                        productCard.className = 'bg-gray-100 p-4 rounded-lg flex items-center space-x-4 space-x-reverse';
-                        productCard.innerHTML = `
-                            <img src="${product.תמונת_מוצר}" alt="${product.שם_מוצר}" class="w-16 h-16 object-cover rounded-md">
-                            <div class="flex-grow">
-                                <h3 class="font-bold text-gray-900">${product.שם_מוצר}</h3>
-                                <p class="text-sm text-gray-600">${product.מפרט_מוצר.substring(0, 50)}...</p>
-                            </div>
-                        `;
-                        productListElement.appendChild(productCard);
-                    });
-                    
-                    if (catalogLoading) catalogLoading.style.display = 'none';
-                    document.getElementById('submit-order-btn').style.display = 'block';
-
-                } else {
-                    showMessage(`שגיאה בטעינת קטלוג: ${data.message || 'השרת לא החזיר קטלוג תקין.'}`);
-                    if (catalogLoading) catalogLoading.textContent = "שגיאה בטעינת קטלוג. נסה שוב מאוחר יותר.";
-                }
-            } catch (error) {
-                console.error('Failed to load product catalog:', error);
-                showMessage(`שגיאה קריטית בטעינת קטלוג: ${error.message}.`);
-                if (catalogLoading) catalogLoading.textContent = "שגיאה ברשת. לא ניתן לטעון קטלוג.";
-            }
-        }
-
-        /**
-         * פונקציה לשליחת הזמנה חדשה - תיקון לשליחת הזמנות
-         */
-        async function submitOrder() {
-            const clientId = localStorage.getItem('saban_client_id');
-            if (!clientId) {
-                showMessage('שגיאה: מספר לקוח חסר. אנא התחבר.');
-                return;
-            }
-
-            // נניח שיש לוגיקה לאיסוף פריטי הזמנה
-            const orderDetails = {
-                clientId: clientId,
-                orderItems: [{ name: "מלט 25 ק״ג", quantity: 5 }, { name: "בלוק 10", quantity: 100 }], // נתונים לדוגמה
-                action: 'submitOrder' // האקשן המתאים ב-Code.js
-            };
-
-            showLoadingScreen();
-            try {
-                const response = await fetch(SERVER_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(orderDetails)
+                document.getElementById('login-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const identifier = document.getElementById('login-identifier').value.trim();
+                    if (identifier) {
+                        dom.modalContainer.classList.remove('show');
+                        dom.splashScreen.style.display = 'flex';
+                        loadClientData(identifier);
+                    }
                 });
+            }
 
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    showMessage('ההזמנה נשלחה בהצלחה! תקבל עדכון בקרוב.');
-                    // הפעלת התראה למנהל דרך השרת:
-                    await fetch(SERVER_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'sendNotificationToAdmin', title: 'הזמנה חדשה התקבלה', message: `הזמנה חדשה מלקוח ${clientId}` })
-                    });
-                } else {
-                    showMessage(`כשל בשליחת הזמנה: ${result.message}`);
+            async function loadClientData(clientId) {
+                try {
+                    const data = await apiPost({ action: 'login', identifier: clientId });
+                    if (data.status === 'error') throw new Error(data.message);
+                    
+                    clientState = {
+                        id: data.user["מספר לקוח"],
+                        name: data.user["שם לקוח"],
+                        avatar: data.user["תמונת פרופיל"] || 'https://i.postimg.cc/2SbDgD1B/1.png',
+                        chatHistory: data.chatHistory || []
+                    };
+
+                    localStorage.setItem('saban_client_id', clientState.id);
+                    await setOneSignalExternalId(clientState.id);
+                    
+                    await playSplashScreenAnimation();
+                    dom.appShell.style.display = 'flex';
+                    setupEventListeners();
+                    renderUI();
+
+                } catch (error) {
+                    localStorage.removeItem('saban_client_id');
+                    dom.splashScreen.style.display = 'none';
+                    promptForClientId();
+                    showToast(error.message || "שגיאה בטעינת נתונים");
                 }
-            } catch (error) {
-                showMessage(`שגיאה ברשת: לא ניתן לשלוח הזמנה. ${error.message}`);
-            } finally {
-                hideLoadingScreen();
             }
-        }
-        
-        /**
-         * פונקציה לשליחת הודעת צ'אט - תיקון לתיעוד הודעות
-         */
-        async function sendMessage() {
-            const message = document.getElementById('chat-message').value.trim();
-            const clientId = localStorage.getItem('saban_client_id');
-            const clientName = document.getElementById('client-name').textContent || 'לקוח לא ידוע';
-            const chatStatus = document.getElementById('chat-status');
 
-            if (!message || !clientId) {
-                showMessage('אנא מלא הודעה ואשר שאתה מחובר.');
-                return;
+            async function playSplashScreenAnimation() {
+                return new Promise(resolve => {
+                    dom.splashScreen.style.opacity = '0';
+                    dom.splashScreen.addEventListener('transitionend', () => {
+                        dom.splashScreen.style.display = 'none';
+                        resolve();
+                    }, { once: true });
+                });
             }
-            
-            chatStatus.textContent = 'שולח הודעה...';
-            showLoadingScreen();
 
-            try {
-                const payload = {
-                    action: 'logChatMessage', // האקשן המתאים ב-Code.js
-                    clientId: clientId,
-                    clientName: clientName,
-                    message: message
+            function renderUI() {
+                dom.clientNameHeader.textContent = clientState.name;
+                dom.profileAvatar.src = clientState.avatar;
+                renderChatHistory();
+            }
+
+            function renderChatHistory() {
+                dom.messagesWrapper.innerHTML = '';
+                // Reverse is needed because we get history newest-first from server
+                clientState.chatHistory.slice().reverse().forEach(msg => {
+                    addMessageToDOM(msg, false); // Add without animation
+                });
+                scrollToBottom();
+            }
+
+            function addMessageToDOM(msg, animate = true) {
+                const bubble = document.createElement('div');
+                let contentHTML = '';
+                
+                if(msg.type === 'order') {
+                    const items = msg.parsedItems.map(item => 
+                        `<li class="order-card-item">${item.quantity} x ${item.productName} ${item.isUnidentified ? ' (לא זוהה)' : ''}</li>`
+                    ).join('');
+                    contentHTML = `
+                        <div class="order-card">
+                            <div class="order-card-title">הזמנה מספר ${msg.orderId}</div>
+                            <ul>${items}</ul>
+                        </div>
+                    `;
+                } else {
+                    contentHTML = `<div class="message-content">${msg.text}</div>`;
+                }
+
+                bubble.className = `message-bubble ${msg.sender === 'user' ? 'incoming' : msg.sender === 'system' ? 'system' : 'outgoing'}`;
+                bubble.innerHTML = `
+                    ${contentHTML}
+                    <div class="message-timestamp">${new Date(msg.timestamp).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</div>
+                `;
+                if (!animate) bubble.style.animation = 'none';
+                
+                dom.messagesWrapper.appendChild(bubble);
+            }
+
+            function scrollToBottom() {
+                dom.chatContainer.scrollTop = dom.chatContainer.scrollHeight;
+            }
+
+            async function handleSendMessage() {
+                const text = dom.chatInput.value.trim();
+                if (!text) return;
+
+                const tempId = `temp_${Date.now()}`;
+                const message = {
+                    id: tempId,
+                    sender: 'user',
+                    type: 'text',
+                    text: text,
+                    timestamp: new Date().toISOString()
                 };
-
-                const response = await fetch(SERVER_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
                 
-                if (result.status === 'success') {
-                    chatStatus.textContent = 'הודעה נשלחה בהצלחה!';
-                    document.getElementById('chat-message').value = '';
-                } else {
-                    chatStatus.textContent = `שגיאה: ${result.message}`;
-                    showMessage(`כשל בשליחת צ'אט: ${result.message}`);
+                clientState.chatHistory.push(message);
+                addMessageToDOM(message);
+                scrollToBottom();
+                dom.chatInput.value = '';
+                autoResizeTextarea();
+
+                try {
+                    const response = await apiPost({
+                        action: 'handleClientMessage',
+                        clientId: clientState.id,
+                        text: text
+                    });
+
+                    // Update local chat history with server response (e.g., replace temp message with final)
+                    // For now, we assume the server sends back the new messages
+                    if (response.newMessages && response.newMessages.length > 0) {
+                        response.newMessages.forEach(newMsg => {
+                             clientState.chatHistory.push(newMsg);
+                             addMessageToDOM(newMsg);
+                        });
+                        scrollToBottom();
+                    }
+                } catch (error) {
+                    // Handle send failure
+                    showToast("שגיאה בשליחת הודעה");
+                    // Optionally, mark the message as failed in the UI
                 }
-            } catch (error) {
-                chatStatus.textContent = 'שגיאה ברשת.';
-                showMessage(`שגיאה ברשת: לא ניתן לשלוח צ'אט. ${error.message}`);
-            } finally {
-                hideLoadingScreen();
             }
-        }
+            
+            function handleSendGPS() {
+                if (!navigator.geolocation) {
+                    showToast("שירותי מיקום לא נתמכים בדפדפן.");
+                    return;
+                }
+                showToast("מאתר מיקום...");
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    const text = `📍 מיקום GPS נשלח: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+                    
+                    const message = {
+                        sender: 'user', type: 'location', text: text,
+                        timestamp: new Date().toISOString(), data: { latitude, longitude }
+                    };
+                    clientState.chatHistory.push(message);
+                    addMessageToDOM(message);
+                    scrollToBottom();
 
-        // ודא ש-loadClientData נקראת כאשר המסמך מוכן
-        document.addEventListener('DOMContentLoaded', loadClientData);
+                    await apiPost({
+                        action: 'handleClientMessage', clientId: clientState.id,
+                        text: text, location: { lat: latitude, lon: longitude }
+                    });
 
-        // אתחול OneSignal - נשאר כפי שהיה
-        window.OneSignal = window.OneSignal || [];
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        window.OneSignalDeferred.push(function(OneSignal) {
-          OneSignal.init({
-            appId: "480bbe6d-0f2e-4669-85e1-039271c73fa6" // ודא שזהו ה-App ID הנכון שלך
-          });
+                }, () => showToast("לא ניתן היה לקבל את המיקום."));
+            }
+
+            function autoResizeTextarea() {
+                dom.chatInput.style.height = 'auto';
+                dom.chatInput.style.height = (dom.chatInput.scrollHeight) + 'px';
+            }
+
+            async function showHistoryModal() {
+                 try {
+                    const data = await apiPost({ action: 'getOrderHistory', clientId: clientState.id });
+                    if (data.status === 'error') throw new Error(data.message);
+                    
+                    const ordersHTML = data.orders.length > 0 ? data.orders.map(order => `
+                        <div style="border-bottom: 1px solid #eee; padding: 10px 0;">
+                            <strong>הזמנה #${order.id}</strong> (${new Date(order.date).toLocaleDateString('he-IL')})
+                            <br> סטטוס: ${order.status}
+                        </div>
+                    `).join('') : '<p>אין היסטוריית הזמנות.</p>';
+
+                    dom.modalContainer.innerHTML = `<div class="modal-content"><h3>היסטוריית הזמנות</h3><div style="max-height: 60vh; overflow-y:auto; margin-top:15px;">${ordersHTML}</div><button class="chat-btn" style="width:100%; border-radius:8px; margin-top:20px;" onclick="document.getElementById('modal-container').classList.remove('show')">סגור</button></div>`;
+                    dom.modalContainer.classList.add('show');
+
+                 } catch(error) {
+                     showToast("שגיאה בטעינת היסטוריה.");
+                 }
+            }
+
+            function setupEventListeners() {
+                dom.sendBtn.addEventListener('click', handleSendMessage);
+                dom.chatInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                    }
+                });
+                dom.chatInput.addEventListener('input', autoResizeTextarea);
+                dom.gpsBtn.addEventListener('click', handleSendGPS);
+                dom.historyBtn.addEventListener('click', showHistoryModal);
+            }
+            
+            function showToast(message, duration = 3000) {
+                dom.toast.textContent = message;
+                dom.toast.classList.add('show');
+                setTimeout(() => dom.toast.classList.remove('show'), duration);
+            }
+
+            initApp();
         });
-        
+    })();
     </script>
 </body>
 </html>
