@@ -29,23 +29,26 @@
         .convo-snippet { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-light); font-size: 0.9rem; }
         .convo-meta { text-align: left; font-size: 0.8rem; color: var(--text-light); }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-left: 5px; }
-        .status-חדש { background-color: var(--info); }
+        .status-חדש { background-color: var(--info); animation: pulse 2s infinite; }
         .status-בטיפול { background-color: var(--accent); }
         .status-הושלם { background-color: var(--success); }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(13, 202, 240, 0); } 100% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0); } }
         
-        .chat-view { display: flex; flex-direction: column; height: 100%; }
-        .chat-header { padding: 15px; border-bottom: 1px solid var(--border); background: #f1f3f5; }
+        .chat-view { display: flex; flex-direction: column; height: 100%; max-height: calc(100vh - 110px); }
+        .chat-header { padding: 15px; border-bottom: 1px solid var(--border); background: #f1f3f5; flex-shrink: 0; }
         .chat-messages { flex-grow: 1; padding: 20px; overflow-y: auto; background: #e9ecef; }
-        .chat-bubble { max-width: 70%; padding: 10px 15px; border-radius: 1rem; margin-bottom: 10px; }
+        .chat-bubble { max-width: 70%; padding: 10px 15px; border-radius: 1rem; margin-bottom: 10px; line-height: 1.5; }
         .chat-bubble.user { background-color: var(--brand); color: white; margin-right: auto; border-bottom-left-radius: 0.25rem; }
         .chat-bubble.admin { background-color: var(--card); margin-left: auto; border-bottom-right-radius: 0.25rem; border: 1px solid var(--border); }
         
-        .order-details-card { background: var(--card); padding: 20px; border-radius: var(--radius); box-shadow: var(--shadow); }
+        .management-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .order-details-card { background: var(--card); padding: 20px; border-radius: var(--radius); box-shadow: var(--shadow); flex-shrink: 0; }
         .form-group { margin-bottom: 15px; }
         .form-group label { font-weight: 600; display: block; margin-bottom: 5px; }
-        .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 5px; }
-        .btn { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; }
+        .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 5px; background-color: #f8f9fa;}
+        .btn { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; transition: background-color 0.2s; }
         .btn-primary { background-color: var(--brand); color: white; }
+        .btn-success { background-color: var(--success); color: white; }
 
         .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
         .kpi-card, .chart-card { background: var(--card); padding: 20px; border-radius: var(--radius); box-shadow: var(--shadow); }
@@ -86,8 +89,8 @@
                     <p id="chat-header-details" style="font-size: 0.9rem;"></p>
                 </div>
                 <div class="chat-messages" id="chat-messages-view"></div>
-                <div class="order-details-card" style="border-radius: 0 0 var(--radius) var(--radius);">
-                     <div id="order-management-panel">
+                <div class="management-container">
+                    <div id="order-management-panel" class="order-details-card">
                         <h4 style="margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">ניהול הזמנה</h4>
                         <div class="form-group">
                             <label for="order-status-select">שנה סטטוס הזמנה</label>
@@ -111,6 +114,14 @@
                         </div>
                         <button id="update-order-btn" class="btn btn-primary" style="width: 100%;">עדכן הזמנה ושלח התראה</button>
                     </div>
+                    <div id="admin-reply-panel" class="order-details-card">
+                        <h4 style="margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">מענה ללקוח</h4>
+                        <div class="form-group">
+                            <label for="admin-message-textarea">כתוב הודעה אישית</label>
+                            <textarea id="admin-message-textarea" rows="4" placeholder="ההודעה תתועד ותישלח ללקוח..."></textarea>
+                        </div>
+                        <button id="send-message-btn" class="btn btn-success" style="width: 100%;">שלח הודעה</button>
+                    </div>
                 </div>
             </div>
             <div id="dashboard-view">
@@ -129,7 +140,7 @@
                         <p id="kpi-avg-time" class="kpi-value">N/A</p>
                     </div>
                     <div class="chart-card" style="grid-column: 1 / -1;">
-                        <canvas id="ordersChart"></canvas>
+                        <canvas id="ordersChart" style="max-height: 300px;"></canvas>
                     </div>
                 </div>
             </div>
@@ -138,18 +149,20 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const API_URL = "https://script.google.com/macros/s/AKfycbzbo8jqgN7SBpU5xcARbNxcUwnYZc7ogcvp9XcYMM_lMr_og2mdkjLSA7C7gp0ptLzY/exec"; // <<<--- !!! חובה להחליף !!!
+            const API_URL = "AKfycbzbo8jqgN7SBpU5xcARbNxcUwnYZc7ogcvp9XcYMM_lMr_og2mdkjLSA7C7gp0ptLzY"; // <<<--- !!! יש להחליף !!!
             let allConversations = [];
-            let activeConversationId = null;
+            let activeConversation = null;
             const currentUser = "ראמי"; // Mock current user
 
             async function apiPost(body) {
                 try {
                     const response = await fetch(API_URL, { method: 'POST', mode: 'cors', body: JSON.stringify(body), cache: 'no-cache', headers: { 'Content-Type': 'text/plain' } });
-                    return await response.json();
+                    const result = await response.json();
+                    if(result.status === 'error') throw new Error(result.message);
+                    return result;
                 } catch (error) {
                     console.error("API Error:", error);
-                    alert("שגיאת תקשורת עם השרת.");
+                    alert(`שגיאת תקשורת עם השרת: ${error.message}`);
                 }
             }
 
@@ -174,7 +187,8 @@
                 }
                 filtered.forEach(convo => {
                     const item = document.createElement('div');
-                    item.className = `convo-item ${convo.id === activeConversationId ? 'active' : ''}`;
+                    const isActive = activeConversation && convo.id === activeConversation.id;
+                    item.className = `convo-item ${isActive ? 'active' : ''}`;
                     item.dataset.id = convo.id;
                     item.innerHTML = `
                         <div class="convo-avatar">${convo.clientName.charAt(0)}</div>
@@ -190,33 +204,34 @@
             }
 
             function selectConversation(id) {
-                activeConversationId = id;
-                const conversation = allConversations.find(c => c.id === id);
-                if (!conversation) return;
+                activeConversation = allConversations.find(c => c.id === id);
+                if (!activeConversation) return;
 
                 document.getElementById('dashboard-view').style.display = 'none';
                 document.getElementById('chat-view').style.display = 'flex';
                 
-                document.getElementById('chat-header-name').textContent = `שיחה עם ${conversation.clientName}`;
-                document.getElementById('chat-header-details').textContent = `לקוח: ${conversation.clientId} | הזמנה: #${conversation.orderId}`;
+                document.getElementById('chat-header-name').textContent = `שיחה עם ${activeConversation.clientName}`;
+                document.getElementById('chat-header-details').textContent = `לקוח: ${activeConversation.clientId} | הזמנה: #${activeConversation.orderId}`;
                 
                 const messagesView = document.getElementById('chat-messages-view');
                 messagesView.innerHTML = '';
-                conversation.chatHistory.forEach(msg => {
+                activeConversation.chatHistory.forEach(msg => {
                     const bubble = document.createElement('div');
-                    bubble.className = `chat-bubble ${msg.sender === 'user' ? 'user' : 'admin'}`;
-                    bubble.textContent = msg.text;
+                    // Invert roles: user is from client, admin is from CRM
+                    bubble.className = `chat-bubble ${msg.שולח === 'user' ? 'user' : 'admin'}`;
+                    bubble.textContent = msg.תוכן;
                     messagesView.appendChild(bubble);
                 });
+                messagesView.scrollTop = messagesView.scrollHeight;
                 
-                document.getElementById('order-status-select').value = conversation.status;
-                document.getElementById('assign-to-select').value = conversation.assignedTo || '';
+                document.getElementById('order-status-select').value = activeConversation.status;
+                document.getElementById('assign-to-select').value = activeConversation.assignedTo || '';
                 
                 renderConversationList(document.getElementById('status-filter').value);
             }
 
             async function handleUpdateOrder() {
-                if (!activeConversationId) {
+                if (!activeConversation) {
                     alert("אנא בחר שיחה לעדכון.");
                     return;
                 }
@@ -230,7 +245,7 @@
 
                 const result = await apiPost({
                     action: 'updateOrderAndNotify',
-                    conversationId: activeConversationId,
+                    conversationId: activeConversation.id,
                     newStatus: newStatus,
                     assignedTo: assignedTo,
                     updatedBy: currentUser
@@ -238,12 +253,46 @@
 
                 if (result.status === 'success') {
                     alert("ההזמנה עודכנה וההתראות נשלחו בהצלחה!");
-                    loadDashboardData(); // Refresh all data
-                } else {
-                    alert(`שגיאה בעדכון: ${result.message}`);
+                    loadDashboardData(); 
                 }
                 
                 btn.textContent = 'עדכן הזמנה ושלח התראה';
+                btn.disabled = false;
+            }
+
+            async function handleSendMessage() {
+                if (!activeConversation) {
+                    alert("אנא בחר שיחה כדי לשלוח הודעה.");
+                    return;
+                }
+                const textarea = document.getElementById('admin-message-textarea');
+                const messageText = textarea.value.trim();
+                if (!messageText) {
+                    alert("לא ניתן לשלוח הודעה ריקה.");
+                    return;
+                }
+
+                const btn = document.getElementById('send-message-btn');
+                btn.textContent = 'שולח...';
+                btn.disabled = true;
+
+                const result = await apiPost({
+                    action: 'adminSendMessage',
+                    clientId: activeConversation.clientId,
+                    orderId: activeConversation.orderId,
+                    adminName: currentUser,
+                    text: messageText
+                });
+
+                if (result.status === 'success') {
+                    textarea.value = '';
+                    // Add message locally for instant feedback
+                    activeConversation.chatHistory.push({ שולח: currentUser, תוכן: messageText });
+                    selectConversation(activeConversation.id); // Re-render chat
+                    alert("ההודעה נשלחה בהצלחה!");
+                }
+                
+                btn.textContent = 'שלח הודעה';
                 btn.disabled = false;
             }
 
@@ -253,7 +302,8 @@
                 document.getElementById('kpi-avg-time').textContent = metrics.avgHandlingTime || 'N/A';
                 
                 const ctx = document.getElementById('ordersChart').getContext('2d');
-                new Chart(ctx, {
+                if(window.ordersChart instanceof Chart) { window.ordersChart.destroy(); }
+                window.ordersChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: metrics.dailyCounts.labels || [],
@@ -272,6 +322,7 @@
             function setupEventListeners() {
                 document.getElementById('status-filter').addEventListener('change', (e) => renderConversationList(e.target.value));
                 document.getElementById('update-order-btn').addEventListener('click', handleUpdateOrder);
+                document.getElementById('send-message-btn').addEventListener('click', handleSendMessage);
             }
 
             function initAdminPanel() {
@@ -285,3 +336,4 @@
     </script>
 </body>
 </html>
+
