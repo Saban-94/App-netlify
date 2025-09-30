@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ברוך הבא לשירות של ח.סבן!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand: #0b72b9; --accent: #ff9f1c; --bg: #f4f7f9; --card: #ffffff;
+            --text-dark: #2c3e50; --text-light: #7f8c8d;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes nudge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        
+        body { font-family: 'Assistant', sans-serif; background-color: var(--bg); color: var(--text-dark); margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .logo { width: 80px; height: 80px; margin-bottom: 20px; }
+        h1 { color: var(--brand); font-size: 2rem; margin-bottom: 10px; }
+        .subtitle { font-size: 1.2rem; color: var(--text-light); margin-bottom: 30px; }
+
+        .card { background: var(--card); border-radius: 12px; padding: 25px; margin-bottom: 20px; text-align: right; box-shadow: 0 4px 15px rgba(0,0,0,0.07); animation: fadeIn 0.5s ease-out forwards; }
+        .card h2 { font-size: 1.3rem; margin-top: 0; border-bottom: 2px solid var(--brand); padding-bottom: 10px; margin-bottom: 15px; }
+        .card p { line-height: 1.7; }
+        .card code { background: #eee; padding: 2px 6px; border-radius: 4px; }
+        
+        .permission-check { display: flex; align-items: center; gap: 15px; background: #eef7ff; padding: 15px; border-radius: 8px; }
+        .permission-check img { width: 50px; height: 50px; }
+        .finger-pointer { font-size: 2rem; animation: nudge 1.5s infinite; }
+        
+        .cta-button { display: inline-block; background-color: var(--success); color: white; padding: 15px 30px; border-radius: 8px; font-size: 1.2rem; font-weight: 700; text-decoration: none; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="https://i.postimg.cc/2SbDgD1B/1.png" alt="לוגו ח.סבן" class="logo">
+        <h1>ברוך הבא לעתיד של ניהול ההזמנות!</h1>
+        <p class="subtitle">העוזר האישי שלך כאן כדי לחסוך לך זמן יקר.</p>
+
+        <div class="card" style="animation-delay: 0.2s;">
+            <h2>למה זה טוב לך?</h2>
+            <p>✅ <b>חסכון בזמן:</b> שלח רשימת קניות בוואטסאפ או באפליקציה, ואנחנו ננתח אותה בשבילך.</p>
+            <p>⏱️ <b>שירות 24/7:</b> העוזר האישי שלך זמין תמיד, גם מחוץ לשעות הפעילות.</p>
+            <p>🚚 <b>מעקב בזמן אמת:</b> קבל עדכונים אוטומטיים על סטטוס ההזמנה שלך ישירות לנייד.</p>
+        </div>
+        
+        <div class="card" style="animation-delay: 0.4s;">
+            <h2>איך "מדברים" עם העוזר?</h2>
+            <p>פשוט כתוב לו בעברית פשוטה. למשל:</p>
+            <ul>
+                <li><code>"אני צריך 100 בלוק 20 ו-50 מלט שחור"</code></li>
+                <li><code>"מה צפי ההגעה של הנהג?"</code></li>
+                <li><code>"כמה ברזל 8 הזמנתי בשבוע שעבר?"</code></li>
+            </ul>
+        </div>
+
+        <div class="card" style="animation-delay: 0.6s;">
+            <h2>התקנה ואישור הרשאות (חשוב!)</h2>
+            <p>כדי לקבל עדכונים בזמן אמת, חשוב להתקין את האפליקציה ולאשר קבלת התראות.</p>
+            <div class="permission-check">
+                <span class="finger-pointer">👈</span>
+                <img src="https://meta-q.cdn.bubble.io/cdn-cgi/image/w=64,h=64,f=auto,dpr=3,fit=contain/f1716899852556x906637865754489700/images.png" alt="Notification Bell">
+                <p>לאחר הכניסה לאפליקציה, לחץ על <b>סמל הפעמון</b> ואשר את הבקשה לקבלת התראות.</p>
+            </div>
+            <p style="margin-top: 15px;"><b>התקנה למסך הבית:</b> בתפריט הדפדפן שלך, חפש את האפשרות "הוסף למסך הבית" (Add to Home Screen) כדי להפוך את האתר לאפליקציה.</p>
+        </div>
+
+        <a href="[Your App Link Here]" class="cta-button">הבנתי, בוא נתחיל!</a>
+    </div>
+</body>
+</html>
