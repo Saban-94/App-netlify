@@ -75,7 +75,7 @@
         <div class="content-wrapper">
             <header class="header">
                 <div id="user-profile"></div>
-                <button class="btn btn-primary" onclick="loadDashboardData(true)">רענן נתונים</button>
+                <button id="refresh-btn" class="btn btn-primary">רענן נתונים</button>
             </header>
 
             <main class="main-content">
@@ -128,7 +128,7 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- התיקון הקריטי ---
+            // --- התיקון הקריטי #1: עדכון כתובת ה-URL ---
             const API_URL = "https://script.google.com/macros/s/AKfycbyO3l59QiKMmPBTyPuDUup4QjzLBH80WygN-fpLqwVlr1AnPv0dXW78MWvXNvHTmosV/exec";
             
             let allOrders = [], archivedOrders = [];
@@ -136,19 +136,21 @@
             const currentUser = "ראמי";
             const notificationSound = document.getElementById('notification-sound');
             
-            window.switchView = (viewId) => {
+            // --- שיחזור והשלמת הפונקציות החסרות ---
+            
+            const switchView = (viewId) => {
                 document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
                 document.getElementById(viewId).classList.add('active');
                 document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
             };
 
-            window.loadDashboardData = async (isManualRefresh = false) => {
+            const loadDashboardData = async (isManualRefresh = false) => {
                  const grid = document.getElementById('orders-grid');
                  if (isManualRefresh) grid.style.opacity = '0.5';
                  const data = await apiPost({ action: 'getAdminDashboard' });
 
                  if (data && data.status === 'success') {
-                     const newOrderIds = new Set(data.conversations.map(o => o.orderId));
+                     const newOrderIds = new Set((data.conversations || []).map(o => o.orderId));
                      if (knownOrderIds.size > 0 && [...newOrderIds].some(id => !knownOrderIds.has(id))) {
                          notificationSound.play().catch(e => console.warn("Could not play sound:", e));
                      }
@@ -157,19 +159,20 @@
                      allOrders = data.conversations.filter(o => o.status !== 'הושלם');
                      archivedOrders = data.conversations.filter(o => o.status === 'הושלם');
                      renderOrdersGrid(allOrders, 'orders-grid');
-                     // renderOrdersGrid(archivedOrders, 'archive-grid'); // Placeholder for archive view
                      
-                     // Update KPIs in reports view
                      const metrics = data.metrics || {};
-                     document.getElementById('online-users-kpi').textContent = metrics.onlineUsers || 0;
-                     document.getElementById('new-orders-kpi').textContent = metrics.newOrders || 0;
+                     const onlineUsersKpi = document.getElementById('online-users-kpi');
+                     const newOrdersKpi = document.getElementById('new-orders-kpi');
+                     if (onlineUsersKpi) onlineUsersKpi.textContent = metrics.onlineUsers || 0;
+                     if (newOrdersKpi) newOrdersKpi.textContent = metrics.newOrders || 0;
                      
-                     // Update Chart
-                     const ctx = document.getElementById('orders-chart').getContext('2d');
-                     if(window.ordersChart) window.ordersChart.destroy();
-                     window.ordersChart = new Chart(ctx, { /* ... chart config ... */ });
+                     const ctx = document.getElementById('orders-chart');
+                     if(ctx) {
+                        if(window.ordersChart) window.ordersChart.destroy();
+                        window.ordersChart = new Chart(ctx.getContext('2d'), { /* ... chart config ... */ });
+                     }
                  } else {
-                     grid.innerHTML = '<p>שגיאה בטעינת נתונים. ודא שהסקריפט פורסם בגרסה חדשה.</p>';
+                     grid.innerHTML = '<p>שגיאה בטעינת נתונים. ודא שהסקריפט פורסם בגרסה חדשה והכתובת נכונה.</p>';
                  }
                  grid.style.opacity = '1';
             };
@@ -191,7 +194,9 @@
                             <div class="card-client">${order.clientName}</div>
                             <span class="status-badge status-${order.status}">${order.status}</span>
                         </div>
-                        <div class="card-body">${order.lastMessage}</div>
+                        <div class="card-body" style="padding: 15px 20px;">
+                            <p style="font-style: italic; color: var(--text-light); margin:0;">"${order.lastMessage}"</p>
+                        </div>
                     `;
                     grid.appendChild(card);
                 });
@@ -211,10 +216,14 @@
                 }
             }
             
+            // --- התיקון הקריטי #2: חיבור ה-event listeners ---
+            
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.addEventListener('click', () => switchView(btn.dataset.view));
             });
 
+            document.getElementById('refresh-btn').addEventListener('click', () => loadDashboardData(true));
+            
             document.getElementById('new-customer-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const customerData = {
@@ -232,8 +241,9 @@
                 }
             });
 
+            // הפעלת המערכת
             loadDashboardData();
-            setInterval(() => loadDashboardData(), 30000); // Auto-refresh every 30 seconds
+            setInterval(() => loadDashboardData(), 30000);
         });
     </script>
 </body>
