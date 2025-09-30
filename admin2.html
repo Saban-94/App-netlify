@@ -36,7 +36,12 @@
         .view.active { display: block; animation: fadeIn 0.4s ease-out; }
 
         .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 25px; }
-        .order-card { /* ... styles from before ... */ }
+        .order-card { background-color: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); display: flex; flex-direction: column; animation: fadeIn 0.5s ease-out forwards; position: relative; }
+        .card-eye-btn { position: absolute; top: 15px; left: 15px; background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--text-light); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border); }
+        .card-client { font-size: 1.2rem; font-weight: 700; }
+        .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; color: #fff; }
+        .status-חדש { background-color: var(--info); animation: pulse 2s infinite; }
         
         .form-view { max-width: 800px; margin: 0 auto; background: var(--card); padding: 30px; border-radius: var(--radius); box-shadow: var(--shadow); }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -123,7 +128,13 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- התיקון הקריטי ---
             const API_URL = "https://script.google.com/macros/s/AKfycbyO3l59QiKMmPBTyPuDUup4QjzLBH80WygN-fpLqwVlr1AnPv0dXW78MWvXNvHTmosV/exec";
+            
+            let allOrders = [], archivedOrders = [];
+            let knownOrderIds = new Set();
+            const currentUser = "ראמי";
+            const notificationSound = document.getElementById('notification-sound');
             
             window.switchView = (viewId) => {
                 document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -131,6 +142,75 @@
                 document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
             };
 
+            window.loadDashboardData = async (isManualRefresh = false) => {
+                 const grid = document.getElementById('orders-grid');
+                 if (isManualRefresh) grid.style.opacity = '0.5';
+                 const data = await apiPost({ action: 'getAdminDashboard' });
+
+                 if (data && data.status === 'success') {
+                     const newOrderIds = new Set(data.conversations.map(o => o.orderId));
+                     if (knownOrderIds.size > 0 && [...newOrderIds].some(id => !knownOrderIds.has(id))) {
+                         notificationSound.play().catch(e => console.warn("Could not play sound:", e));
+                     }
+                     knownOrderIds = newOrderIds;
+
+                     allOrders = data.conversations.filter(o => o.status !== 'הושלם');
+                     archivedOrders = data.conversations.filter(o => o.status === 'הושלם');
+                     renderOrdersGrid(allOrders, 'orders-grid');
+                     // renderOrdersGrid(archivedOrders, 'archive-grid'); // Placeholder for archive view
+                     
+                     // Update KPIs in reports view
+                     const metrics = data.metrics || {};
+                     document.getElementById('online-users-kpi').textContent = metrics.onlineUsers || 0;
+                     document.getElementById('new-orders-kpi').textContent = metrics.newOrders || 0;
+                     
+                     // Update Chart
+                     const ctx = document.getElementById('orders-chart').getContext('2d');
+                     if(window.ordersChart) window.ordersChart.destroy();
+                     window.ordersChart = new Chart(ctx, { /* ... chart config ... */ });
+                 } else {
+                     grid.innerHTML = '<p>שגיאה בטעינת נתונים. ודא שהסקריפט פורסם בגרסה חדשה.</p>';
+                 }
+                 grid.style.opacity = '1';
+            };
+
+            function renderOrdersGrid(orders, gridId) {
+                const grid = document.getElementById(gridId);
+                grid.innerHTML = '';
+                if (!orders || orders.length === 0) {
+                    grid.innerHTML = '<p>אין הזמנות להצגה.</p>';
+                    return;
+                }
+                orders.forEach(order => {
+                    const card = document.createElement('div');
+                    card.className = 'order-card';
+                    card.dataset.orderId = order.orderId;
+                    card.innerHTML = `
+                        <button class="card-eye-btn" data-order-id="${order.orderId}">👁️</button>
+                        <div class="card-header">
+                            <div class="card-client">${order.clientName}</div>
+                            <span class="status-badge status-${order.status}">${order.status}</span>
+                        </div>
+                        <div class="card-body">${order.lastMessage}</div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+
+            async function apiPost(body) {
+                try {
+                    const response = await fetch(API_URL, { method: 'POST', mode: 'cors', body: JSON.stringify(body), cache: 'no-cache', headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+                    if (!response.ok) throw new Error(`Network response error: ${response.statusText}`);
+                    const result = await response.json();
+                    if(result.status === 'error') throw new Error(result.message);
+                    return result;
+                } catch (error) {
+                    console.error("API Error:", error);
+                    alert(`שגיאת תקשורת: ${error.message}`);
+                    return null;
+                }
+            }
+            
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.addEventListener('click', () => switchView(btn.dataset.view));
             });
@@ -141,24 +221,19 @@
                     name: document.getElementById('customer-name').value,
                     phone: document.getElementById('customer-phone').value,
                     projectName: document.getElementById('project-name').value,
-                    // ... collect all fields
                 };
                 
                 const result = await apiPost({ action: 'createNewCustomer', customer: customerData });
                 if (result && result.status === 'success') {
                     alert('לקוח נוצר בהצלחה!');
-                    // Generate and show WhatsApp share link
                     const whatsappLink = `https://wa.me/?text=${encodeURIComponent(result.whatsappMessage)}`;
                     window.open(whatsappLink, '_blank');
                     e.target.reset();
                 }
             });
-            
-            async function apiPost(body) {
-                // ... same apiPost function
-            }
-            
-            // ... all other functions like loadDashboardData, renderOrdersGrid etc.
+
+            loadDashboardData();
+            setInterval(() => loadDashboardData(), 30000); // Auto-refresh every 30 seconds
         });
     </script>
 </body>
