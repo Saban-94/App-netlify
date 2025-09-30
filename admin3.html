@@ -116,8 +116,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const API_URL = "https://script.google.com/macros/s/AKfycbxRmcgRn2RMPn1us9k_7e85i6nYYLq8R09rLDHLakzE-nXjB0eanHOtQlrW7h2Kkp-I/exec";
-            // ... (rest of script)
-
+            
             const switchView = (viewId) => {
                 document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
                 document.getElementById(viewId).classList.add('active');
@@ -133,7 +132,6 @@
                 const formData = new FormData(e.target);
                 const customerData = Object.fromEntries(formData.entries());
                 
-                // Basic validation
                 if (!customerData.name || !customerData.phone) {
                     alert('שם וטלפון הם שדות חובה.');
                     return;
