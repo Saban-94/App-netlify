@@ -2,57 +2,27 @@
   "name": "העוזר האישי להזמנות - ח.סבן",
   "short_name": "ח.סבן",
   "description": "אפליקציית הזמנות חכמה וניהול פרויקטים עבור לקוחות ח.סבן.",
-  "start_url": "./index.html",
-  "scope": ".",
+  "start_url": "/index.html",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f7f7f7",
-  "theme_color": "#0b72b9",
+  "background_color": "#ECE5DD",
+  "theme_color": "#075E54",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "https://placehold.co/72x72/0b72b9/FFFFFF/PNG?text=Saban",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "https://placehold.co/96x96/0b72b9/FFFFFF/PNG?text=Saban",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "https://placehold.co/128x128/0b72b9/FFFFFF/PNG?text=Saban",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "https://placehold.co/144x144/0b72b9/FFFFFF/PNG?text=Saban",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "https://placehold.co/152x152/0b72b9/FFFFFF/PNG?text=Saban",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "https://placehold.co/192x192/0b72b9/FFFFFF/PNG?text=Saban",
+      "src": "https://i.postimg.cc/2SbDgD1B/1.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     },
     {
-      "src": "https://placehold.co/384x384/0b72b9/FFFFFF/PNG?text=Saban",
-      "sizes": "384x384",
+      "src": "https://i.postimg.cc/2SbDgD1B/1.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://placehold.co/512x512/0b72b9/FFFFFF/PNG?text=Saban",
+      "src": "https://i.postimg.cc/2SbDgD1B/1.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
