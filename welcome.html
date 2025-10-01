@@ -3,260 +3,500 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ח.סבן</title>
+    <title>העוזר האישי להזמנות - ח.סבן</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/2SbDgD1B/1.png">
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         :root {
-            --primary: #075E54; --secondary: #128C7E; --accent: #25D366; --bg: #ECE5DD;
-            --app-bg: #f7f7f7; --text-dark: #333; --border: #e0e0e0;
-            --outgoing-bg: #dcf8c6; --incoming-bg: #ffffff;
-            --header-height: 60px; --nav-height: 50px;
+            --whatsapp-bg: #E5DDD5;
+            --whatsapp-header: #075E54;
+            --whatsapp-teal-green: #128C7E;
+            --whatsapp-teal-green-dark: #075E54;
+            --whatsapp-light-green: #25D366;
+            --whatsapp-blue: #34B7F1;
+            --outgoing-bg: #DCF8C6;
+            --incoming-bg: #FFFFFF;
+            --system-bg: #E1F9FF;
+            --text-dark: #000000;
+            --text-light: #667781;
+            --border-color: #F0F2F5;
+            --radius-s: 8px;
+            --radius-l: 12px;
+            --shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
-        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Assistant', sans-serif; background-color: var(--primary); }
-        .app-shell { display: flex; flex-direction: column; height: 100%; max-width: 800px; margin: 0 auto; background-color: var(--bg); }
+
+        body {
+            margin: 0;
+            font-family: 'Assistant', sans-serif;
+            background-color: var(--whatsapp-bg);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
         
-        /* Header */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #f0f2f5;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
         .app-header {
-            display: flex; align-items: center; justify-content: space-between;
-            background-color: var(--primary); color: white;
-            padding: 0 15px; height: var(--header-height);
+            background-color: var(--whatsapp-header);
+            color: white;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
         }
-        .header-left { display: flex; align-items: center; }
-        .avatar { width: 40px; height: 40px; border-radius: 50%; background-color: #fff; margin-left: 10px; }
-        .header-title { font-size: 1.2rem; font-weight: 600; }
-        .header-menu-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
-
-        /* Nav Tabs */
-        .app-nav { display: flex; background-color: var(--primary); height: var(--nav-height); }
+        .header-profile { display: flex; align-items: center; gap: 10px; }
+        .header-profile img { width: 40px; height: 40px; border-radius: 50%; }
+        .header-profile span { font-size: 1.1rem; font-weight: 600; }
+        .header-menu-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 5px; }
+        
+        .app-nav {
+            display: flex;
+            background-color: var(--whatsapp-header);
+            color: #8db5b0;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
         .nav-tab {
-            flex: 1; display: flex; align-items: center; justify-content: center;
-            color: rgba(255,255,255,0.7); text-decoration: none; font-weight: 600;
-            border-bottom: 3px solid transparent; transition: all 0.3s;
+            flex: 1;
+            padding: 14px 10px;
+            text-align: center;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease-in-out;
+            text-transform: uppercase;
+            font-size: 0.9rem;
         }
-        .nav-tab.active { color: white; border-bottom-color: var(--accent); }
+        .nav-tab.active {
+            color: white;
+            border-bottom-color: white;
+        }
 
-        /* Page Container */
-        .page-container { flex: 1; position: relative; overflow: hidden; }
-        .page {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: var(--bg); overflow-y: auto;
-            transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        .app-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            position: relative;
         }
-        .page.active { transform: translateX(0); }
-        .page.rtl-exit { transform: translateX(-100%); }
+        .page {
+            display: none;
+            height: 100%;
+            flex-direction: column;
+        }
+        .page.active {
+            display: flex;
+        }
+
+        /* Chat Page Specific */
+        #page-chat {
+             background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+        }
+        .chat-canvas {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        /* ... (rest of chat bubble styles remain the same) ... */
+         .message-bubble {
+            max-width: 80%;
+            padding: 8px 12px;
+            border-radius: var(--radius-l);
+            line-height: 1.5;
+            word-wrap: break-word;
+            box-shadow: var(--shadow);
+            opacity: 0;
+            transform: translateY(10px);
+            animation: slideUp 0.3s forwards;
+        }
+        .message-bubble.out {
+            background-color: var(--outgoing-bg);
+            align-self: flex-end;
+            border-bottom-right-radius: var(--radius-s);
+        }
+        .message-bubble.in {
+            background-color: var(--incoming-bg);
+            align-self: flex-start;
+            border-bottom-left-radius: var(--radius-s);
+        }
+        .message-bubble.system {
+            background-color: var(--system-bg);
+            align-self: center;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        .chat-input-area {
+            display: flex;
+            padding: 10px;
+            background-color: #f0f2f5;
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        .chat-input {
+            flex-grow: 1;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 15px;
+            font-size: 1rem;
+            font-family: 'Assistant', sans-serif;
+        }
+        .send-btn {
+            background: var(--whatsapp-teal-green);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            margin-right: 10px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .floating-action-btn {
+            position: absolute;
+            bottom: 80px;
+            left: 20px;
+            background-color: var(--whatsapp-light-green);
+            color: white;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            border: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            font-size: 1.2rem;
+            display: none; /* Hidden by default */
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+        }
         
-        /* Chat Page Styles */
-        #page-chat { display: flex; flex-direction: column; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); }
-        .chat-canvas { flex: 1; padding: 15px; }
-        .message-bubble { max-width: 85%; padding: 10px 15px; border-radius: 12px; margin-bottom: 12px; line-height: 1.5; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1); animation: popIn 0.3s ease-out; }
-        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .message-bubble.outgoing { background-color: var(--outgoing-bg); margin-left: auto; }
-        .message-bubble.incoming { background-color: var(--incoming-bg); margin-right: auto; }
-        .buttons-container { display: flex; gap: 8px; margin-top: 10px; }
-        .quick-reply-btn { background-color: #fff; border: 1px solid var(--secondary); color: var(--secondary); padding: 8px 12px; border-radius: 20px; cursor: pointer; }
-        .chat-input-area { display: flex; padding: 10px; background-color: #f0f0f0; }
-        .chat-input { flex: 1; border: 1px solid #ccc; border-radius: 20px; padding: 10px 15px; font-size: 1rem; }
-        
-        /* Other Pages Styles */
-        .content-padding { padding: 20px; }
-        .list-item { background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .list-item h3 { margin: 0 0 10px 0; }
-        
-        .fab { position: fixed; bottom: 80px; left: 20px; width: 56px; height: 56px; background-color: var(--accent); border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-size: 1.5rem; color: white; cursor: pointer; transform: scale(0); transition: transform 0.3s; }
-        .fab.visible { transform: scale(1); }
+        @keyframes slideUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Generic List Styles for Projects/Orders */
+        .list-container {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .list-item {
+            background: white;
+            border-radius: var(--radius-s);
+            padding: 15px;
+            box-shadow: var(--shadow);
+            border-right: 5px solid var(--whatsapp-teal-green);
+            cursor: pointer;
+        }
+        .list-item h3 { margin: 0 0 5px 0; }
+        .list-item p { margin: 0; color: var(--text-light); }
+        .list-item .status {
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            float: left;
+        }
+        .status.new { background-color: #e1f2fb; color: #0b72b9; }
+        .status.in-progress { background-color: #fff4d5; color: #ff9f1c; }
+        .status.done { background-color: #dcf8c6; color: #075E54; }
+
+        /* Reports Page */
+        #page-reports .content-wrapper {
+            padding: 20px;
+            overflow-y: auto;
+        }
+         
     </style>
 </head>
 <body>
-    <div class="app-shell">
-        <header class="app-header">
-            <div class="header-left">
-                <img src="https://i.postimg.cc/2SbDgD1B/1.png" class="avatar">
-                <h1 class="header-title" id="header-title">הזמנה חדשה</h1>
-            </div>
-            <button class="header-menu-btn"><i class="fa fa-ellipsis-v"></i></button>
-        </header>
 
+    <div class="app-container">
+        <header class="app-header">
+            <div class="header-profile">
+                <img id="profile-pic" src="https://i.postimg.cc/2SbDgD1B/1.png" alt="Avatar">
+                <span id="profile-name">טוען...</span>
+            </div>
+        </header>
+        
         <nav class="app-nav">
-            <a href="#chat" class="nav-tab active" data-page="page-chat">צ'אט</a>
-            <a href="#projects" class="nav-tab" data-page="page-projects">פרויקטים</a>
-            <a href="#orders" class="nav-tab" data-page="page-orders">הזמנות</a>
-            <a href="#reports" class="nav-tab" data-page="page-reports">דוחות</a>
+            <div class="nav-tab active" data-page="chat">צ'אט</div>
+            <div class="nav-tab" data-page="projects">פרויקטים</div>
+            <div class="nav-tab" data-page="orders">הזמנות</div>
+            <div class="nav-tab" data-page="reports">דוחות</div>
         </nav>
 
-        <main class="page-container">
-            <!-- Page 1: Chat for New Order -->
+        <main class="app-content">
+            <!-- Page 1: Chat for New Orders -->
             <div id="page-chat" class="page active">
-                <div class="chat-canvas" id="chat-canvas"></div>
+                <div class="chat-canvas"></div>
+                <button class="floating-action-btn" title="שלח הזמנה">🚀</button>
                 <div class="chat-input-area">
-                    <input type="text" id="message-input" class="chat-input" placeholder="הקלד/י הודעה...">
-                    <button id="send-btn">➡️</button>
+                    <input type="text" class="chat-input" placeholder="הקלד הודעה...">
+                    <button class="send-btn">➤</button>
                 </div>
             </div>
-            <!-- Page 2: Projects -->
+            
+            <!-- Page 2: Projects List -->
             <div id="page-projects" class="page">
-                <div class="content-padding" id="projects-content">טוען פרויקטים...</div>
+                 <div class="list-container"></div>
             </div>
+
             <!-- Page 3: Orders History -->
             <div id="page-orders" class="page">
-                 <div class="content-padding" id="orders-content">טוען היסטוריית הזמנות...</div>
+                <div class="list-container"></div>
             </div>
+
             <!-- Page 4: Reports -->
             <div id="page-reports" class="page">
-                 <div class="content-padding">
-                    <h2>ניתוח הזמנות</h2>
+                 <div class="content-wrapper">
+                    <h3>סיכום פעילות</h3>
                     <canvas id="ordersChart"></canvas>
                 </div>
             </div>
         </main>
     </div>
 
-    <button id="fab" class="fab">🚀</button>
-    
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbxsza_jsirK2cQRTpp4mNMGj76qlVbLyVPLMgIGxdBdkY3S1DQ4UtNGk4VMMpRfnmbI/exec';
-        // --- STATE & DOM ---
-        const state = { /* ... (same as before) ... */ };
-        const dom = { /* ... (same as before, plus new elements) ... */ };
-        // (For brevity, assuming previous state and dom objects are here)
-        
-        // --- NEW NAVIGATION & PAGE LOGIC ---
-        function setupNavigation() {
-            const tabs = document.querySelectorAll('.nav-tab');
-            tabs.forEach(tab => {
-                tab.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const pageId = e.currentTarget.dataset.page;
-                    navigateTo(pageId);
-                    
-                    tabs.forEach(t => t.classList.remove('active'));
-                    e.currentTarget.classList.add('active');
-                });
-            });
-        }
-        
-        function navigateTo(pageId) {
-            const pages = document.querySelectorAll('.page');
-            const targetPage = document.getElementById(pageId);
-            const currentPage = document.querySelector('.page.active');
+        document.addEventListener('DOMContentLoaded', () => {
+            const dom = {
+                headerName: document.getElementById('profile-name'),
+                headerPic: document.getElementById('profile-pic'),
+                navTabs: document.querySelectorAll('.nav-tab'),
+                pages: document.querySelectorAll('.page'),
+                chatCanvas: document.querySelector('#page-chat .chat-canvas'),
+                chatInput: document.querySelector('.chat-input'),
+                sendBtn: document.querySelector('.send-btn'),
+                fab: document.querySelector('.floating-action-btn'),
+                projectsList: document.querySelector('#page-projects .list-container'),
+                ordersList: document.querySelector('#page-orders .list-container'),
+                reportsCanvas: document.getElementById('ordersChart'),
+            };
 
-            if (currentPage && currentPage.id !== pageId) {
-                currentPage.classList.remove('active');
-                currentPage.classList.add('rtl-exit');
-                setTimeout(() => currentPage.classList.remove('rtl-exit'), 400);
+            const state = {
+                currentPage: 'chat',
+                clientId: null,
+                clientData: {},
+                projects: [],
+                orders: [],
+                conversationState: null,
+                orderDraft: {},
+            };
+            
+            // --- INITIALIZATION ---
+            function init() {
+                const urlParams = new URLSearchParams(window.location.search);
+                state.clientId = urlParams.get('clientId') || '60120'; // Default for demo
+
+                setupEventListeners();
+                fetchDashboardData();
+                startConversation();
             }
             
-            targetPage.classList.add('active');
-            document.getElementById('header-title').textContent = document.querySelector(`.nav-tab[data-page="${pageId}"]`).textContent;
-
-            // Load page content
-            if (pageId === 'page-projects' || pageId === 'page-orders' || pageId === 'page-reports') {
-                loadDashboardData();
-            }
-        }
-        
-        async function loadDashboardData() {
-            const content = await apiPost({ action: 'getClientDashboardData', clientId: state.clientId });
-            if(content.success) {
-                renderProjectsPage(content.data.projects, content.data.orders);
-                renderOrdersPage(content.data.orders);
-                renderReportsPage(content.data.orders);
-            }
-        }
-        
-        function renderProjectsPage(projects, orders) {
-             const container = document.getElementById('projects-content');
-             container.innerHTML = '<h3>הפרויקטים שלי</h3>';
-             projects.forEach(p => {
-                 const projectOrders = orders.filter(o => o.project === p['שם_פרויקט']);
-                 let ordersHtml = projectOrders.map(o => `<li>הזמנה ${o.orderId} - ${o.status}</li>`).join('');
-                 container.innerHTML += `
-                    <div class="list-item">
-                        <h3>${p['שם_פרויקט']}</h3>
-                        <p>${p['כתובת']}</p>
-                        <ul>${ordersHtml || '<li>אין הזמנות לפרויקט זה.</li>'}</ul>
-                    </div>
-                 `;
-             });
-        }
-
-        function renderOrdersPage(orders) {
-            const container = document.getElementById('orders-content');
-            container.innerHTML = '<h3>היסטוריית הזמנות</h3>';
-            orders.forEach(o => {
-                container.innerHTML += `
-                    <div class="list-item">
-                        <h3>הזמנה ${o.orderId} <span style="font-size: 0.8em; color: #666;">(${o.date})</span></h3>
-                        <p><strong>סטטוס:</strong> ${o.status}</p>
-                        <p><strong>פריטים:</strong> ${JSON.parse(o.items).length} סוגים</p>
-                    </div>
-                `;
-            });
-        }
-
-        function renderReportsPage(orders) {
-            const ctx = document.getElementById('ordersChart').getContext('2d');
-            const monthlyData = orders.reduce((acc, order) => {
-                const month = new Date(order.date).toLocaleString('he-IL', { month: 'long', year: 'numeric' });
-                acc[month] = (acc[month] || 0) + 1;
-                return acc;
-            }, {});
-
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(monthlyData),
-                    datasets: [{
-                        label: 'מספר הזמנות בחודש',
-                        data: Object.values(monthlyData),
-                        backgroundColor: 'rgba(37, 211, 102, 0.5)',
-                        borderColor: 'rgba(37, 211, 102, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: { responsive: true }
-            });
-        }
-
-        // --- EXISTING CHAT LOGIC ---
-        // All previous functions (init, fetchClient, loadProducts, conversationManager, etc.) are assumed to be here.
-        // A small modification is needed for the conversation manager to handle status checks.
-
-        function conversationManager(userInput = null, payload = null) {
-            if (userInput && (userInput.includes('סטטוס') || userInput.includes('מצב הזמנה'))) {
-                handleStatusRequest(userInput);
-                return;
-            }
-            // ... (rest of the switch-case logic from previous version)
-        }
-        
-        async function handleStatusRequest(userInput) {
-            const orderIdMatch = userInput.match(/SBN-\d+/);
-            if (orderIdMatch) {
-                const orderId = orderIdMatch[0];
-                renderUserMessage(userInput);
-                const res = await apiPost({ action: 'getOrderStatus', orderId: orderId });
-                if (res.success) {
-                    renderBotMessage(`סטטוס הזמנה ${orderId} הוא: *${res.status}*.`);
-                } else {
-                    renderBotMessage(`לא מצאתי הזמנה במספר ${orderId}.`);
+            async function fetchDashboardData() {
+                const data = await apiPost({ action: 'getClientDashboardData', clientId: state.clientId });
+                if(data.success) {
+                    state.clientData = data.client;
+                    state.projects = data.projects;
+                    state.orders = data.orders;
+                    
+                    updateUI();
                 }
-            } else {
-                renderBotMessage("כדי לבדוק סטטוס, אנא רשום את מספר ההזמנה המלא (לדוגמה: מה הסטטוס של SBN-12345?).");
             }
-        }
-        
-        // --- INITIALIZATION ---
-        function init() {
-            // ... (previous init logic)
-            setupNavigation(); // Add this line to initialize tabs
-        }
-        
-        // --- Call init ---
-        // init();
-        // (The full script from the previous turn would be integrated here)
+
+            function updateUI() {
+                // Header
+                dom.headerName.textContent = state.clientData.שם_לקוח || 'אורח';
+                if(state.clientData.תמונת_פרופיל) dom.headerPic.src = state.clientData.תמונת_פרופיל;
+                
+                // Render pages
+                renderProjectsPage();
+                renderOrdersPage();
+                renderReportsPage();
+            }
+
+            // --- NAVIGATION ---
+            function setupEventListeners() {
+                dom.navTabs.forEach(tab => {
+                    tab.addEventListener('click', () => navigateTo(tab.dataset.page));
+                });
+                 dom.sendBtn.addEventListener('click', handleUserInput);
+                 dom.chatInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') handleUserInput(); });
+                 dom.fab.addEventListener('click', handleFinalizeOrder);
+            }
+            
+            function navigateTo(pageId) {
+                state.currentPage = pageId;
+                dom.pages.forEach(p => p.classList.remove('active'));
+                document.getElementById(`page-${pageId}`).classList.add('active');
+                dom.navTabs.forEach(t => t.classList.toggle('active', t.dataset.page === pageId));
+            }
+            
+            // --- PAGE RENDERING ---
+            function renderProjectsPage() {
+                dom.projectsList.innerHTML = '<h3>הפרויקטים שלי</h3>';
+                if (state.projects.length === 0) {
+                    dom.projectsList.innerHTML += '<p>לא נמצאו פרויקטים משויכים.</p>';
+                    return;
+                }
+                state.projects.forEach(p => {
+                    const projectEl = document.createElement('div');
+                    projectEl.className = 'list-item';
+                    projectEl.innerHTML = `<h3>${p.שם_פרויקט}</h3><p>${p.כתובת}</p>`;
+                    dom.projectsList.appendChild(projectEl);
+                });
+            }
+
+            function renderOrdersPage() {
+                dom.ordersList.innerHTML = '<h3>היסטוריית הזמנות</h3>';
+                 if (state.orders.length === 0) {
+                    dom.ordersList.innerHTML += '<p>אין היסטוריית הזמנות.</p>';
+                    return;
+                }
+                state.orders.forEach(o => {
+                    const orderEl = document.createElement('div');
+                    orderEl.className = 'list-item';
+                    const orderDate = new Date(o.חותמת_זמן_יצירה).toLocaleDateString('he-IL');
+                    orderEl.innerHTML = `
+                        <span class="status new">${o.סטטוס}</span>
+                        <h3>הזמנה ${o.מזהה_הזמנה}</h3>
+                        <p>בתאריך: ${orderDate}</p>`;
+                    dom.ordersList.appendChild(orderEl);
+                });
+            }
+
+             function renderReportsPage() {
+                const ctx = dom.reportsCanvas.getContext('2d');
+                const ordersByMonth = state.orders.reduce((acc, order) => {
+                    const month = new Date(order.חותמת_זמן_יצירה).toLocaleString('he-IL', { month: 'long' });
+                    acc[month] = (acc[month] || 0) + 1;
+                    return acc;
+                }, {});
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(ordersByMonth),
+                        datasets: [{
+                            label: '# הזמנות בחודש',
+                            data: Object.values(ordersByMonth),
+                            backgroundColor: 'rgba(7, 94, 84, 0.7)',
+                            borderColor: 'rgba(7, 94, 84, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: { scales: { y: { beginAtZero: true } } }
+                });
+            }
+
+            // --- CHAT LOGIC ---
+            
+            async function startConversation() {
+                const response = await apiPost({ action: 'handleMessage', type: 'start' });
+                addMessage(response.sender, response.text, response.buttons);
+            }
+
+            async function handleUserInput() {
+                const messageText = dom.chatInput.value.trim();
+                if (!messageText) return;
+
+                addMessage('out', messageText);
+                dom.chatInput.value = '';
+
+                // Check for status query
+                if (messageText.includes('סטטוס') || messageText.includes('מצב הזמנה')) {
+                    const orderIdMatch = messageText.match(/SBN-\d+/);
+                    if (orderIdMatch) {
+                        const statusData = await apiPost({ action: 'getOrderStatus', orderId: orderIdMatch[0] });
+                         addMessage('in', statusData.success ? `סטטוס הזמנה ${orderIdMatch[0]}: ${statusData.status}` : 'לא מצאתי הזמנה כזו.');
+                    } else {
+                         addMessage('in', 'לאיזו הזמנה לבדוק סטטוס? אנא ציין מספר הזמנה.');
+                    }
+                    return;
+                }
+                
+                const response = await apiPost({ action: 'handleMessage', message: messageText });
+                addMessage(response.sender, response.text, response.buttons);
+
+                 // Update FAB visibility
+                if (response.orderDraft && response.orderDraft.items && response.orderDraft.items.length > 0) {
+                    dom.fab.style.display = 'flex';
+                }
+            }
+
+            function addMessage(type, text, buttons = []) {
+                const bubble = document.createElement('div');
+                bubble.className = `message-bubble ${type}`;
+                bubble.innerHTML = text.replace(/\n/g, '<br>');
+
+                if (buttons.length > 0) {
+                    const btnContainer = document.createElement('div');
+                    btnContainer.style.marginTop = '10px';
+                    buttons.forEach(btn => {
+                        const button = document.createElement('button');
+                        button.textContent = btn.title;
+                        button.onclick = () => handleButtonPayload(btn.payload);
+                        // Add some basic styling
+                        button.style.cssText = 'background:var(--whatsapp-blue); color:white; border:none; padding: 8px 12px; border-radius: 5px; cursor:pointer; margin: 2px;';
+                        btnContainer.appendChild(button);
+                    });
+                    bubble.appendChild(btnContainer);
+                }
+
+                dom.chatCanvas.appendChild(bubble);
+                dom.chatCanvas.scrollTop = dom.chatCanvas.scrollHeight;
+            }
+
+            async function handleButtonPayload(payload) {
+                addMessage('out', `(בחירה: ${payload})`);
+                const response = await apiPost({ action: 'handleMessage', payload: payload });
+                addMessage(response.sender, response.text, response.buttons);
+            }
+            
+            async function handleFinalizeOrder() {
+                 const response = await apiPost({ action: 'handleMessage', payload: 'finalize_order' });
+                 addMessage(response.sender, response.text, response.buttons);
+                 dom.fab.style.display = 'none';
+            }
+
+
+            // --- API HELPER ---
+            async function apiPost(body) {
+                const requestBody = { ...body, clientId: state.clientId };
+                try {
+                    const response = await fetch('YOUR_APPS_SCRIPT_URL', { // <<-- MUST BE REPLACED
+                        method: 'POST',
+                        body: JSON.stringify(requestBody),
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                         mode: 'cors'
+                    });
+                     if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                    return await response.json();
+                } catch(error) {
+                    console.error("API Error:", error);
+                    return { success: false, text: "שגיאת תקשורת עם השרת." };
+                }
+            }
+            
+            init();
+        });
     </script>
 </body>
 </html>
