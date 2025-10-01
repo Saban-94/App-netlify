@@ -7,51 +7,38 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --brand: #0b72b9; --accent: #ff9f1c; --bg: #f0f2f5; --surface: #ffffff;
+            --brand: #0b72b9; --accent: #ff9f1c; --bg: #e5ddd5; --app-bg: #f7f7f7;
             --text-dark: #333; --text-light: #666; --border: #e0e0e0;
-            --success: #25D366; --highlight-bg: #fff3cd;
-            --radius-l: 12px; --radius-s: 8px; --shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --outgoing-bg: #dcf8c6; --incoming-bg: #ffffff; --system-bg: #e1f2fb;
+            --radius-l: 20px; --radius-s: 8px; --shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
-        html { box-sizing: border-box; }
-        *, *:before, *:after { box-sizing: inherit; }
-        body {
-            font-family: 'Assistant', sans-serif; background-color: var(--bg);
-            margin: 0; padding: 0; color: var(--text-dark);
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Assistant', sans-serif; background-color: var(--bg); }
+        .app-container { display: flex; flex-direction: column; height: 100%; max-width: 800px; margin: 0 auto; background-color: var(--app-bg); }
+        .chat-canvas { flex: 1; overflow-y: auto; padding: 15px; }
+        .message-bubble {
+            max-width: 85%; padding: 10px 15px; border-radius: var(--radius-l);
+            margin-bottom: 12px; line-height: 1.5; word-wrap: break-word;
+            box-shadow: var(--shadow); position: relative;
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .container { max-width: 800px; margin: 20px auto; padding: 15px; }
-        .card { background: var(--surface); border-radius: var(--radius-l); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow); }
-        h1, h2 { margin-top: 0; }
-        .input-group { position: relative; margin-bottom: 15px; }
-        .input-group input, .input-group textarea {
-            width: 100%; padding: 12px; border: 1px solid var(--border);
-            border-radius: var(--radius-s); font-size: 1rem; font-family: 'Assistant', sans-serif;
-            transition: border-color 0.3s, box-shadow 0.3s;
+        @keyframes popIn { from { transform: translateY(10px) scale(0.95); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        .message-bubble.outgoing { background-color: var(--outgoing-bg); align-self: flex-end; margin-right: 0; margin-left: auto; border-bottom-right-radius: var(--radius-s); }
+        .message-bubble.incoming { background-color: var(--incoming-bg); align-self: flex-start; margin-left: 0; margin-right: auto; border-bottom-left-radius: var(--radius-s); }
+        .message-bubble.system { background-color: var(--system-bg); align-self: center; text-align: center; font-size: 0.9rem; }
+        .buttons-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .quick-reply-btn {
+            background-color: var(--surface); border: 1px solid var(--brand); color: var(--brand);
+            padding: 8px 16px; border-radius: 20px; cursor: pointer; transition: all 0.2s;
+            font-family: 'Assistant', sans-serif; font-weight: 600;
         }
-        .input-group input:focus, .input-group textarea:focus {
-            outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(11, 114, 185, 0.1);
-        }
-        #search-results { max-height: 250px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-s); }
-        .result-item {
-            display: flex; align-items: center; padding: 10px; cursor: pointer;
-            border-bottom: 1px solid var(--border); transition: background-color 0.2s;
-        }
-        .result-item:last-child { border-bottom: none; }
-        .result-item:hover { background-color: #f8f9fa; }
-        .result-item.highlight { background-color: var(--highlight-bg); animation: pulse 1.5s infinite; }
-        .result-item img { width: 40px; height: 40px; border-radius: var(--radius-s); margin-left: 15px; object-fit: cover; }
-        #order-table table { width: 100%; border-collapse: collapse; }
-        #order-table th, #order-table td { padding: 12px; text-align: right; border-bottom: 1px solid var(--border); }
-        #order-table th { background-color: #fafafa; }
-        .qty-input { width: 60px; text-align: center; }
+        .quick-reply-btn:hover { background-color: var(--brand); color: white; }
+        .chat-input-area { display: flex; padding: 10px 15px; align-items: center; background-color: #f0f2f5; border-top: 1px solid var(--border); }
+        .chat-input { flex: 1; border: 1px solid var(--border); border-radius: 20px; padding: 10px 15px; font-size: 1rem; }
+        .chat-input:focus { outline: none; border-color: var(--brand); }
+        .send-btn { background: none; border: none; cursor: pointer; padding: 8px; }
         
-        /* --- מקטע CSS חדש --- */
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255, 159, 28, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 159, 28, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 159, 28, 0); }
-        }
         .fab {
-            position: fixed; bottom: 30px; left: 30px;
+            position: fixed; bottom: 80px; left: 30px;
             width: 60px; height: 60px; background-color: var(--success);
             border-radius: 50%; border: none;
             display: flex; align-items: center; justify-content: center;
@@ -60,246 +47,283 @@
             transform: scale(0); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .fab.visible { transform: scale(1); }
-        .inline-typing::after {
-            content: '|';
-            animation: blink 1s step-end infinite;
-        }
-        @keyframes blink { 50% { opacity: 0; } }
-        /* --- סוף מקטע CSS חדש --- */
-
+        .summary-card { border: 1px solid var(--border); border-radius: var(--radius-s); padding: 10px; }
+        .summary-card h4 { margin-top: 0; }
+        .summary-card ul { padding-right: 20px; margin: 5px 0; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>הזמנה חדשה</h1>
-        
-        <div class="card">
-            <h2>1. הוספת פריטים</h2>
-            <div class="input-group">
-                <textarea id="paste-area" rows="4" placeholder="הדבק כאן רשימה או הקלד שם מוצר לחיפוש..."></textarea>
-            </div>
-            <div id="search-results"></div>
-        </div>
-
-        <div class="card" id="order-card">
-            <h2>2. סיכום הזמנה</h2>
-            <div id="order-table">
-                <table>
-                    <thead><tr><th>מוצר</th><th>כמות</th><th>הסר</th></tr></thead>
-                    <tbody id="order-body"></tbody>
-                </table>
-            </div>
-            <p id="order-placeholder" style="text-align: center; color: var(--text-light);">עדיין לא נוספו פריטים להזמנה.</p>
-        </div>
+    <div class="app-container">
+        <main class="chat-canvas" id="chat-canvas"></main>
+        <footer class="chat-input-area">
+            <input type="text" id="message-input" class="chat-input" placeholder="הקלד/י הודעה...">
+            <button id="send-btn" class="send-btn">➡️</button>
+        </footer>
     </div>
-
     <button id="fab" class="fab">🚀</button>
 
     <script>
-        // --- State Management ---
         const state = {
             clientId: null,
             clientData: null,
-            products: [],      // רשימת כל המוצרים מהשרת
-            orderItems: [],    // הפריטים שהלקוח הוסיף להזמנה הנוכחית
-            order: {           // אובייקט ההזמנה הנבנה
-                items: [],
-                delivery: {}
+            products: [],
+            conversationState: 'START', // START, AWAITING_PROJECT, AWAITING_CONTACT, AWAITING_PHONE, AWAITING_ADDRESS, AWAITING_DELIVERY, AWAITING_PRODUCTS, AWAITING_CONFIRMATION
+            order: {
+                project: null,
+                contact: null,
+                phone: null,
+                address: null,
+                delivery_type: null,
+                items: []
             }
         };
 
-        // --- DOM Elements ---
         const dom = {
-            pasteArea: document.getElementById('paste-area'),
-            searchResults: document.getElementById('search-results'),
-            orderBody: document.getElementById('order-body'),
-            orderPlaceholder: document.getElementById('order-placeholder'),
-            orderCard: document.getElementById('order-card'),
+            canvas: document.getElementById('chat-canvas'),
+            input: document.getElementById('message-input'),
+            sendBtn: document.getElementById('send-btn'),
             fab: document.getElementById('fab')
         };
         
-        // --- API & Initialization ---
-        const API_URL = 'YOUR_APPS_SCRIPT_URL'; // <--- יש לעדכן את כתובת ה-API
+        const API_URL = 'YOUR_APPS_SCRIPT_URL'; // <--- יש לעדכן
 
         async function init() {
             const urlParams = new URLSearchParams(window.location.search);
             state.clientId = urlParams.get('clientId');
             if (state.clientId) {
-                await fetchClient();
                 await loadProducts();
+                await fetchClient();
+                conversationManager();
             } else {
-                console.error("Client ID is missing.");
+                renderBotMessage("שגיאה: מזהה לקוח חסר.");
             }
             setupEventListeners();
         }
 
         async function fetchClient() {
-            // This function can be expanded later if needed
             const response = await apiPost({ action: 'getClientById', clientId: state.clientId });
             if (response.success) {
                 state.clientData = response.data;
             }
         }
 
-        // --- New Order Management Functions ---
-
         async function loadProducts() {
             const response = await apiPost({ action: 'getProducts' });
             if (response.success) {
                 state.products = response.data;
-            } else {
-                console.error('Failed to load products.');
             }
         }
 
-        function handlePastedLine(e) {
-            const text = e.target.value;
-            if (text.includes('\n')) {
-                const lines = text.split('\n').filter(line => line.trim() !== '');
-                lines.forEach(line => parseLineToItem(line));
-                e.target.value = '';
-                dom.searchResults.innerHTML = '';
-            } else {
-                findMatches(text);
+        function conversationManager(userInput = null, payload = null) {
+            switch (state.conversationState) {
+                case 'START':
+                    const clientName = state.clientData ? state.clientData['שם_לקוח'] : 'לקוח יקר';
+                    const mainProject = state.clientData ? state.clientData['פרויקט_ראשי'] : null;
+                    const buttons = [];
+                    if (mainProject) {
+                        buttons.push({ title: `לפרויקט ${mainProject}`, payload: `project:${mainProject}` });
+                    }
+                    buttons.push({ title: 'הזמנה כללית', payload: 'project:general' });
+                    renderBotMessage(`שלום ${clientName}, לאיזה פרויקט להזמין?`, buttons);
+                    state.conversationState = 'AWAITING_PROJECT';
+                    break;
+
+                case 'AWAITING_PROJECT':
+                    if (payload) {
+                        state.order.project = payload.replace('project:', '');
+                        renderUserMessage(payload === 'project:general' ? 'הזמנה כללית' : `לפרויקט ${state.order.project}`);
+                        renderBotMessage("מי איש הקשר להזמנה?");
+                        state.conversationState = 'AWAITING_CONTACT';
+                    }
+                    break;
+
+                case 'AWAITING_CONTACT':
+                    if (userInput) {
+                        state.order.contact = userInput;
+                        renderUserMessage(userInput);
+                        renderBotMessage("מה מספר הטלפון שלו?");
+                        state.conversationState = 'AWAITING_PHONE';
+                    }
+                    break;
+
+                case 'AWAITING_PHONE':
+                    if (userInput) {
+                        state.order.phone = userInput;
+                        renderUserMessage(userInput);
+                        renderBotMessage("מה הכתובת למשלוח?");
+                        state.conversationState = 'AWAITING_ADDRESS';
+                    }
+                    break;
+
+                case 'AWAITING_ADDRESS':
+                     if (userInput) {
+                        state.order.address = userInput;
+                        renderUserMessage(userInput);
+                        const deliveryButtons = [
+                            { title: 'מנוף', payload: 'delivery:crane' },
+                            { title: 'פריקה ידנית', payload: 'delivery:manual' },
+                            { title: 'מכולה', payload: 'delivery:container' }
+                        ];
+                        renderBotMessage("איזה סוג הובלה תרצה?", deliveryButtons);
+                        state.conversationState = 'AWAITING_DELIVERY';
+                    }
+                    break;
+
+                case 'AWAITING_DELIVERY':
+                    if (payload) {
+                        state.order.delivery_type = payload.replace('delivery:', '');
+                         renderUserMessage(dom.canvas.querySelector(`[onclick*="${payload}"]`).textContent);
+                        renderBotMessage("מצוין. אנא רשום את המוצרים והכמויות (לדוגמה: 10 מלט).");
+                        state.conversationState = 'AWAITING_PRODUCTS';
+                    }
+                    break;
+
+                case 'AWAITING_PRODUCTS':
+                    if (userInput) {
+                        renderUserMessage(userInput);
+                        handleProductInput(userInput);
+                    }
+                    if (payload && payload.startsWith('add:')) {
+                        const sku = payload.replace('add:', '');
+                        const product = state.products.find(p => p.sku == sku);
+                        addProductToOrder(product);
+                    }
+                    break;
+                
+                case 'AWAITING_CONFIRMATION':
+                    if (payload === 'confirm_order') {
+                        sendOrder();
+                    } else if (payload === 'edit_order') {
+                        renderBotMessage("ההזמנה חזרה למצב עריכה. ניתן להוסיף עוד מוצרים.");
+                        state.conversationState = 'AWAITING_PRODUCTS';
+                    }
+                    break;
             }
         }
-
-        function parseLineToItem(line) {
-            const match = line.match(/^(\d+)\s+(.*)/);
+        
+        function handleProductInput(text) {
+            const match = text.match(/^(\d+)\s+(.*)/);
             let qty = 1;
-            let query = line.trim();
-
+            let query = text.trim();
             if (match) {
                 qty = parseInt(match[1], 10);
                 query = match[2].trim();
             }
-
+            
             const productMatch = state.products.find(p => p.name.includes(query));
             if (productMatch) {
-                addProductToOrder(productMatch, qty);
-            }
-        }
-        
-        function findMatches(query) {
-            dom.searchResults.innerHTML = '';
-            if (query.length < 3) return;
-
-            const matches = state.products.filter(p => p.name.includes(query));
-            matches.forEach(product => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'result-item highlight';
-                itemDiv.innerHTML = `
-                    <img src="${product.image || 'https://placehold.co/40x40/eee/333?text=?'}" alt="${product.name}">
-                    <span>${product.name}</span>
-                `;
-                itemDiv.onclick = () => addProductToOrder(product);
-                dom.searchResults.appendChild(itemDiv);
-            });
-        }
-
-        function addProductToOrder(product, quantity = 1) {
-            const existingItem = state.orderItems.find(item => item.sku === product.sku);
-            if (existingItem) {
-                existingItem.quantity += quantity;
+                const buttons = [{ title: '✅ הוסף להזמנה', payload: `add:${productMatch.sku}` }];
+                renderBotMessage(`זיהיתי: ${productMatch.name}. הכמות היא ${qty}. להוסיף?`, buttons);
+                // Temporarily store quantity
+                productMatch.tempQty = qty; 
             } else {
-                state.orderItems.push({ ...product, quantity });
+                renderBotMessage(`לא מצאתי מוצר בשם "${query}". נסה שוב.`);
             }
-            renderOrderTable();
-            dom.pasteArea.value = '';
-            dom.searchResults.innerHTML = '';
         }
 
-        function renderOrderTable() {
-            dom.orderBody.innerHTML = '';
-            if (state.orderItems.length === 0) {
-                dom.orderPlaceholder.style.display = 'block';
-                dom.fab.classList.remove('visible');
-                return;
+        function addProductToOrder(product) {
+            const quantity = product.tempQty || 1;
+            const existing = state.order.items.find(i => i.sku === product.sku);
+            if(existing) {
+                existing.quantity += quantity;
+            } else {
+                state.order.items.push({ sku: product.sku, name: product.name, quantity: quantity });
             }
-            
-            dom.orderPlaceholder.style.display = 'none';
-            dom.fab.classList.add('visible');
-
-            state.orderItems.forEach((item, index) => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${item.name}</td>
-                    <td><input type="number" class="qty-input" value="${item.quantity}" min="1" data-index="${index}"></td>
-                    <td><button data-index="${index}">❌</button></td>
-                `;
-                dom.orderBody.appendChild(row);
-            });
+            renderBotMessage(`הוספתי ${quantity} x ${product.name} להזמנה.`);
+            if (state.order.items.length > 0) {
+                dom.fab.classList.add('visible');
+            }
+            delete product.tempQty;
         }
 
-        async function finalizeAndSendOrder() {
-            // Build the final order object
-            state.order.items = state.orderItems;
-            
-            // Dynamic Question Flow
-            if (!state.order.delivery.address) {
-                const address = prompt("מה הכתובת למשלוח?");
-                if (!address) return; // User cancelled
-                state.order.delivery.address = address;
-            }
-            if (!state.order.delivery.contact) {
-                 const contact = prompt("מי איש קשר ומספר טלפון?");
-                 if (!contact) return;
-                 state.order.delivery.contact = contact;
-            }
+        function showFinalSummary() {
+            let itemsHtml = state.order.items.map(i => `<li>${i.quantity} x ${i.name}</li>`).join('');
+            const summaryHtml = `
+                <div class="summary-card">
+                    <h4>סיכום הזמנה</h4>
+                    <p><strong>פרויקט:</strong> ${state.order.project}</p>
+                    <p><strong>איש קשר:</strong> ${state.order.contact} (${state.order.phone})</p>
+                    <p><strong>כתובת:</strong> ${state.order.address}</p>
+                    <p><strong>הובלה:</strong> ${state.order.delivery_type}</p>
+                    <strong>פריטים:</strong>
+                    <ul>${itemsHtml}</ul>
+                </div>
+            `;
+            const buttons = [
+                { title: '✅ אשר ושלח', payload: 'confirm_order' },
+                { title: '✏️ ערוך', payload: 'edit_order' }
+            ];
+            renderBotMessage(summaryHtml, buttons);
+            state.conversationState = 'AWAITING_CONFIRMATION';
+        }
 
-            // Send to backend
+        async function sendOrder() {
+            renderBotMessage("שולח הזמנה...");
             const response = await apiPost({ action: 'saveOrder', orderData: state.order, clientId: state.clientId });
-            
             if (response.success) {
-                alert(`הזמנה ${response.orderId} נשלחה בהצלחה!`);
-                // Construct and open WhatsApp share link
-                const orderText = `הזמנה חדשה (${response.orderId}):\n` + state.orderItems.map(i => `${i.quantity} x ${i.name}`).join('\n');
+                renderBotMessage(`הזמנה ${response.orderId} נשלחה בהצלחה! תודה שבחרת בנו.`);
+                const orderText = `הזמנה חדשה (${response.orderId}):\n` + state.order.items.map(i => `${i.quantity} x ${i.name}`).join('\n');
                 const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(orderText)}`;
                 window.open(whatsappUrl, '_blank');
-                
-                // Reset state
-                state.orderItems = [];
-                state.order = { items: [], delivery: {} };
-                renderOrderTable();
+                // Reset for next order
+                setTimeout(() => location.reload(), 5000);
             } else {
-                alert('שגיאה בשליחת ההזמנה.');
+                renderBotMessage("אופס, הייתה שגיאה בשליחת ההזמנה.");
             }
-        }
-        
-        function handleOrderTableClick(e) {
-            const index = e.target.dataset.index;
-            if (e.target.tagName === 'BUTTON') { // Remove button
-                state.orderItems.splice(index, 1);
-                renderOrderTable();
-            }
-            if (e.target.classList.contains('qty-input')) { // Quantity input change
-                e.target.onchange = () => {
-                    state.orderItems[index].quantity = parseInt(e.target.value, 10);
-                };
-            }
-        }
-        
-        // --- Event Listeners ---
-        function setupEventListeners() {
-            dom.pasteArea.addEventListener('input', handlePastedLine);
-            dom.fab.addEventListener('click', finalizeAndSendOrder);
-            dom.orderBody.addEventListener('click', handleOrderTableClick);
         }
 
-        // --- API Helper ---
-        async function apiPost(body) {
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    mode: 'cors',
-                    body: JSON.stringify(body),
-                    headers: { 'Content-Type': 'application/json' },
+        // --- Rendering Functions ---
+        function renderBotMessage(html, buttons = []) {
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble incoming';
+            bubble.innerHTML = html;
+            
+            if (buttons.length > 0) {
+                const btnContainer = document.createElement('div');
+                btnContainer.className = 'buttons-container';
+                buttons.forEach(btn => {
+                    const button = document.createElement('button');
+                    button.className = 'quick-reply-btn';
+                    button.textContent = btn.title;
+                    button.onclick = () => {
+                        btnContainer.remove();
+                        conversationManager(null, btn.payload);
+                    };
+                    btnContainer.appendChild(button);
                 });
-                return response.json();
-            } catch (error) {
-                console.error('API Error:', error);
-                return { success: false, message: 'Network error' };
+                bubble.appendChild(btnContainer);
             }
+            dom.canvas.appendChild(bubble);
+            scrollToBottom();
+        }
+        
+        function renderUserMessage(text) {
+             const bubble = document.createElement('div');
+             bubble.className = 'message-bubble outgoing';
+             bubble.textContent = text;
+             dom.canvas.appendChild(bubble);
+             scrollToBottom();
+        }
+
+        function handleSend() {
+            const text = dom.input.value.trim();
+            if (text) {
+                conversationManager(text, null);
+                dom.input.value = '';
+            }
+        }
+        
+        function setupEventListeners() {
+            dom.sendBtn.addEventListener('click', handleSend);
+            dom.input.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
+            dom.fab.addEventListener('click', showFinalSummary);
+        }
+        
+        function scrollToBottom() { dom.canvas.scrollTop = dom.canvas.scrollHeight; }
+
+        async function apiPost(body) {
+            const response = await fetch(API_URL, { method: 'POST', mode: 'cors', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+            return response.json();
         }
 
         init();
