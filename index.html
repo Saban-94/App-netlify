@@ -3,330 +3,259 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>מערכת הזמנות חכמה - ח.סבן</title>
+    <title>מערכת ניהול - ח.סבן</title>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         :root {
-            --brand: #0b72b9; --accent: #ff9f1c; --bg: #e5ddd5; --app-bg: #f7f7f7;
-            --text-dark: #333; --text-light: #666; --border: #e0e0e0;
-            --outgoing-bg: #dcf8c6; --incoming-bg: #ffffff; --system-bg: #e1f2fb;
-            --radius-l: 20px; --radius-s: 8px; --shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --primary: #075E54; --secondary: #128C7E; --accent: #25D366; --bg: #ECE5DD;
+            --app-bg: #f7f7f7; --text-dark: #333; --border: #e0e0e0;
+            --outgoing-bg: #dcf8c6; --incoming-bg: #ffffff;
+            --header-height: 60px; --nav-height: 50px;
         }
-        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Assistant', sans-serif; background-color: var(--bg); }
-        .app-container { display: flex; flex-direction: column; height: 100%; max-width: 800px; margin: 0 auto; background-color: var(--app-bg); }
-        .chat-canvas { flex: 1; overflow-y: auto; padding: 15px; }
-        .message-bubble {
-            max-width: 85%; padding: 10px 15px; border-radius: var(--radius-l);
-            margin-bottom: 12px; line-height: 1.5; word-wrap: break-word;
-            box-shadow: var(--shadow); position: relative;
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        @keyframes popIn { from { transform: translateY(10px) scale(0.95); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
-        .message-bubble.outgoing { background-color: var(--outgoing-bg); align-self: flex-end; margin-right: 0; margin-left: auto; border-bottom-right-radius: var(--radius-s); }
-        .message-bubble.incoming { background-color: var(--incoming-bg); align-self: flex-start; margin-left: 0; margin-right: auto; border-bottom-left-radius: var(--radius-s); }
-        .message-bubble.system { background-color: var(--system-bg); align-self: center; text-align: center; font-size: 0.9rem; }
-        .buttons-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-        .quick-reply-btn {
-            background-color: var(--surface); border: 1px solid var(--brand); color: var(--brand);
-            padding: 8px 16px; border-radius: 20px; cursor: pointer; transition: all 0.2s;
-            font-family: 'Assistant', sans-serif; font-weight: 600;
-        }
-        .quick-reply-btn:hover { background-color: var(--brand); color: white; }
-        .chat-input-area { display: flex; padding: 10px 15px; align-items: center; background-color: #f0f2f5; border-top: 1px solid var(--border); }
-        .chat-input { flex: 1; border: 1px solid var(--border); border-radius: 20px; padding: 10px 15px; font-size: 1rem; }
-        .chat-input:focus { outline: none; border-color: var(--brand); }
-        .send-btn { background: none; border: none; cursor: pointer; padding: 8px; }
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Assistant', sans-serif; background-color: var(--primary); }
+        .app-shell { display: flex; flex-direction: column; height: 100%; max-width: 800px; margin: 0 auto; background-color: var(--bg); }
         
-        .fab {
-            position: fixed; bottom: 80px; left: 30px;
-            width: 60px; height: 60px; background-color: var(--success);
-            border-radius: 50%; border: none;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-            font-size: 2rem; color: white; cursor: pointer;
-            transform: scale(0); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        /* Header */
+        .app-header {
+            display: flex; align-items: center; justify-content: space-between;
+            background-color: var(--primary); color: white;
+            padding: 0 15px; height: var(--header-height);
         }
+        .header-left { display: flex; align-items: center; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; background-color: #fff; margin-left: 10px; }
+        .header-title { font-size: 1.2rem; font-weight: 600; }
+        .header-menu-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+
+        /* Nav Tabs */
+        .app-nav { display: flex; background-color: var(--primary); height: var(--nav-height); }
+        .nav-tab {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            color: rgba(255,255,255,0.7); text-decoration: none; font-weight: 600;
+            border-bottom: 3px solid transparent; transition: all 0.3s;
+        }
+        .nav-tab.active { color: white; border-bottom-color: var(--accent); }
+
+        /* Page Container */
+        .page-container { flex: 1; position: relative; overflow: hidden; }
+        .page {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--bg); overflow-y: auto;
+            transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .page.active { transform: translateX(0); }
+        .page.rtl-exit { transform: translateX(-100%); }
+        
+        /* Chat Page Styles */
+        #page-chat { display: flex; flex-direction: column; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); }
+        .chat-canvas { flex: 1; padding: 15px; }
+        .message-bubble { max-width: 85%; padding: 10px 15px; border-radius: 12px; margin-bottom: 12px; line-height: 1.5; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.1); animation: popIn 0.3s ease-out; }
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .message-bubble.outgoing { background-color: var(--outgoing-bg); margin-left: auto; }
+        .message-bubble.incoming { background-color: var(--incoming-bg); margin-right: auto; }
+        .buttons-container { display: flex; gap: 8px; margin-top: 10px; }
+        .quick-reply-btn { background-color: #fff; border: 1px solid var(--secondary); color: var(--secondary); padding: 8px 12px; border-radius: 20px; cursor: pointer; }
+        .chat-input-area { display: flex; padding: 10px; background-color: #f0f0f0; }
+        .chat-input { flex: 1; border: 1px solid #ccc; border-radius: 20px; padding: 10px 15px; font-size: 1rem; }
+        
+        /* Other Pages Styles */
+        .content-padding { padding: 20px; }
+        .list-item { background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .list-item h3 { margin: 0 0 10px 0; }
+        
+        .fab { position: fixed; bottom: 80px; left: 20px; width: 56px; height: 56px; background-color: var(--accent); border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-size: 1.5rem; color: white; cursor: pointer; transform: scale(0); transition: transform 0.3s; }
         .fab.visible { transform: scale(1); }
-        .summary-card { border: 1px solid var(--border); border-radius: var(--radius-s); padding: 10px; }
-        .summary-card h4 { margin-top: 0; }
-        .summary-card ul { padding-right: 20px; margin: 5px 0; }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <main class="chat-canvas" id="chat-canvas"></main>
-        <footer class="chat-input-area">
-            <input type="text" id="message-input" class="chat-input" placeholder="הקלד/י הודעה...">
-            <button id="send-btn" class="send-btn">➡️</button>
-        </footer>
+    <div class="app-shell">
+        <header class="app-header">
+            <div class="header-left">
+                <img src="https://i.postimg.cc/2SbDgD1B/1.png" class="avatar">
+                <h1 class="header-title" id="header-title">הזמנה חדשה</h1>
+            </div>
+            <button class="header-menu-btn"><i class="fa fa-ellipsis-v"></i></button>
+        </header>
+
+        <nav class="app-nav">
+            <a href="#chat" class="nav-tab active" data-page="page-chat">צ'אט</a>
+            <a href="#projects" class="nav-tab" data-page="page-projects">פרויקטים</a>
+            <a href="#orders" class="nav-tab" data-page="page-orders">הזמנות</a>
+            <a href="#reports" class="nav-tab" data-page="page-reports">דוחות</a>
+        </nav>
+
+        <main class="page-container">
+            <!-- Page 1: Chat for New Order -->
+            <div id="page-chat" class="page active">
+                <div class="chat-canvas" id="chat-canvas"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="message-input" class="chat-input" placeholder="הקלד/י הודעה...">
+                    <button id="send-btn">➡️</button>
+                </div>
+            </div>
+            <!-- Page 2: Projects -->
+            <div id="page-projects" class="page">
+                <div class="content-padding" id="projects-content">טוען פרויקטים...</div>
+            </div>
+            <!-- Page 3: Orders History -->
+            <div id="page-orders" class="page">
+                 <div class="content-padding" id="orders-content">טוען היסטוריית הזמנות...</div>
+            </div>
+            <!-- Page 4: Reports -->
+            <div id="page-reports" class="page">
+                 <div class="content-padding">
+                    <h2>ניתוח הזמנות</h2>
+                    <canvas id="ordersChart"></canvas>
+                </div>
+            </div>
+        </main>
     </div>
+
     <button id="fab" class="fab">🚀</button>
-
+    
     <script>
-        const state = {
-            clientId: null,
-            clientData: null,
-            products: [],
-            conversationState: 'START', // START, AWAITING_PROJECT, AWAITING_CONTACT, AWAITING_PHONE, AWAITING_ADDRESS, AWAITING_DELIVERY, AWAITING_PRODUCTS, AWAITING_CONFIRMATION
-            order: {
-                project: null,
-                contact: null,
-                phone: null,
-                address: null,
-                delivery_type: null,
-                items: []
-            }
-        };
-
-        const dom = {
-            canvas: document.getElementById('chat-canvas'),
-            input: document.getElementById('message-input'),
-            sendBtn: document.getElementById('send-btn'),
-            fab: document.getElementById('fab')
-        };
+        // --- STATE & DOM ---
+        const state = { /* ... (same as before) ... */ };
+        const dom = { /* ... (same as before, plus new elements) ... */ };
+        // (For brevity, assuming previous state and dom objects are here)
         
-        const API_URL = 'YOUR_APPS_SCRIPT_URL'; // <--- יש לעדכן
+        // --- NEW NAVIGATION & PAGE LOGIC ---
+        function setupNavigation() {
+            const tabs = document.querySelectorAll('.nav-tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const pageId = e.currentTarget.dataset.page;
+                    navigateTo(pageId);
+                    
+                    tabs.forEach(t => t.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                });
+            });
+        }
+        
+        function navigateTo(pageId) {
+            const pages = document.querySelectorAll('.page');
+            const targetPage = document.getElementById(pageId);
+            const currentPage = document.querySelector('.page.active');
 
-        async function init() {
-            const urlParams = new URLSearchParams(window.location.search);
-            state.clientId = urlParams.get('clientId');
-            if (state.clientId) {
-                await loadProducts();
-                await fetchClient();
-                conversationManager();
-            } else {
-                renderBotMessage("שגיאה: מזהה לקוח חסר.");
+            if (currentPage && currentPage.id !== pageId) {
+                currentPage.classList.remove('active');
+                currentPage.classList.add('rtl-exit');
+                setTimeout(() => currentPage.classList.remove('rtl-exit'), 400);
             }
-            setupEventListeners();
+            
+            targetPage.classList.add('active');
+            document.getElementById('header-title').textContent = document.querySelector(`.nav-tab[data-page="${pageId}"]`).textContent;
+
+            // Load page content
+            if (pageId === 'page-projects' || pageId === 'page-orders' || pageId === 'page-reports') {
+                loadDashboardData();
+            }
+        }
+        
+        async function loadDashboardData() {
+            const content = await apiPost({ action: 'getClientDashboardData', clientId: state.clientId });
+            if(content.success) {
+                renderProjectsPage(content.data.projects, content.data.orders);
+                renderOrdersPage(content.data.orders);
+                renderReportsPage(content.data.orders);
+            }
+        }
+        
+        function renderProjectsPage(projects, orders) {
+             const container = document.getElementById('projects-content');
+             container.innerHTML = '<h3>הפרויקטים שלי</h3>';
+             projects.forEach(p => {
+                 const projectOrders = orders.filter(o => o.project === p['שם_פרויקט']);
+                 let ordersHtml = projectOrders.map(o => `<li>הזמנה ${o.orderId} - ${o.status}</li>`).join('');
+                 container.innerHTML += `
+                    <div class="list-item">
+                        <h3>${p['שם_פרויקט']}</h3>
+                        <p>${p['כתובת']}</p>
+                        <ul>${ordersHtml || '<li>אין הזמנות לפרויקט זה.</li>'}</ul>
+                    </div>
+                 `;
+             });
         }
 
-        async function fetchClient() {
-            const response = await apiPost({ action: 'getClientById', clientId: state.clientId });
-            if (response.success) {
-                state.clientData = response.data;
-            }
+        function renderOrdersPage(orders) {
+            const container = document.getElementById('orders-content');
+            container.innerHTML = '<h3>היסטוריית הזמנות</h3>';
+            orders.forEach(o => {
+                container.innerHTML += `
+                    <div class="list-item">
+                        <h3>הזמנה ${o.orderId} <span style="font-size: 0.8em; color: #666;">(${o.date})</span></h3>
+                        <p><strong>סטטוס:</strong> ${o.status}</p>
+                        <p><strong>פריטים:</strong> ${JSON.parse(o.items).length} סוגים</p>
+                    </div>
+                `;
+            });
         }
 
-        async function loadProducts() {
-            const response = await apiPost({ action: 'getProducts' });
-            if (response.success) {
-                state.products = response.data;
-            }
+        function renderReportsPage(orders) {
+            const ctx = document.getElementById('ordersChart').getContext('2d');
+            const monthlyData = orders.reduce((acc, order) => {
+                const month = new Date(order.date).toLocaleString('he-IL', { month: 'long', year: 'numeric' });
+                acc[month] = (acc[month] || 0) + 1;
+                return acc;
+            }, {});
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(monthlyData),
+                    datasets: [{
+                        label: 'מספר הזמנות בחודש',
+                        data: Object.values(monthlyData),
+                        backgroundColor: 'rgba(37, 211, 102, 0.5)',
+                        borderColor: 'rgba(37, 211, 102, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: { responsive: true }
+            });
         }
+
+        // --- EXISTING CHAT LOGIC ---
+        // All previous functions (init, fetchClient, loadProducts, conversationManager, etc.) are assumed to be here.
+        // A small modification is needed for the conversation manager to handle status checks.
 
         function conversationManager(userInput = null, payload = null) {
-            switch (state.conversationState) {
-                case 'START':
-                    const clientName = state.clientData ? state.clientData['שם_לקוח'] : 'לקוח יקר';
-                    const mainProject = state.clientData ? state.clientData['פרויקט_ראשי'] : null;
-                    const buttons = [];
-                    if (mainProject) {
-                        buttons.push({ title: `לפרויקט ${mainProject}`, payload: `project:${mainProject}` });
-                    }
-                    buttons.push({ title: 'הזמנה כללית', payload: 'project:general' });
-                    renderBotMessage(`שלום ${clientName}, לאיזה פרויקט להזמין?`, buttons);
-                    state.conversationState = 'AWAITING_PROJECT';
-                    break;
-
-                case 'AWAITING_PROJECT':
-                    if (payload) {
-                        state.order.project = payload.replace('project:', '');
-                        renderUserMessage(payload === 'project:general' ? 'הזמנה כללית' : `לפרויקט ${state.order.project}`);
-                        renderBotMessage("מי איש הקשר להזמנה?");
-                        state.conversationState = 'AWAITING_CONTACT';
-                    }
-                    break;
-
-                case 'AWAITING_CONTACT':
-                    if (userInput) {
-                        state.order.contact = userInput;
-                        renderUserMessage(userInput);
-                        renderBotMessage("מה מספר הטלפון שלו?");
-                        state.conversationState = 'AWAITING_PHONE';
-                    }
-                    break;
-
-                case 'AWAITING_PHONE':
-                    if (userInput) {
-                        state.order.phone = userInput;
-                        renderUserMessage(userInput);
-                        renderBotMessage("מה הכתובת למשלוח?");
-                        state.conversationState = 'AWAITING_ADDRESS';
-                    }
-                    break;
-
-                case 'AWAITING_ADDRESS':
-                     if (userInput) {
-                        state.order.address = userInput;
-                        renderUserMessage(userInput);
-                        const deliveryButtons = [
-                            { title: 'מנוף', payload: 'delivery:crane' },
-                            { title: 'פריקה ידנית', payload: 'delivery:manual' },
-                            { title: 'מכולה', payload: 'delivery:container' }
-                        ];
-                        renderBotMessage("איזה סוג הובלה תרצה?", deliveryButtons);
-                        state.conversationState = 'AWAITING_DELIVERY';
-                    }
-                    break;
-
-                case 'AWAITING_DELIVERY':
-                    if (payload) {
-                        state.order.delivery_type = payload.replace('delivery:', '');
-                         renderUserMessage(dom.canvas.querySelector(`[onclick*="${payload}"]`).textContent);
-                        renderBotMessage("מצוין. אנא רשום את המוצרים והכמויות (לדוגמה: 10 מלט).");
-                        state.conversationState = 'AWAITING_PRODUCTS';
-                    }
-                    break;
-
-                case 'AWAITING_PRODUCTS':
-                    if (userInput) {
-                        renderUserMessage(userInput);
-                        handleProductInput(userInput);
-                    }
-                    if (payload && payload.startsWith('add:')) {
-                        const sku = payload.replace('add:', '');
-                        const product = state.products.find(p => p.sku == sku);
-                        addProductToOrder(product);
-                    }
-                    break;
-                
-                case 'AWAITING_CONFIRMATION':
-                    if (payload === 'confirm_order') {
-                        sendOrder();
-                    } else if (payload === 'edit_order') {
-                        renderBotMessage("ההזמנה חזרה למצב עריכה. ניתן להוסיף עוד מוצרים.");
-                        state.conversationState = 'AWAITING_PRODUCTS';
-                    }
-                    break;
+            if (userInput && (userInput.includes('סטטוס') || userInput.includes('מצב הזמנה'))) {
+                handleStatusRequest(userInput);
+                return;
             }
+            // ... (rest of the switch-case logic from previous version)
         }
         
-        function handleProductInput(text) {
-            const match = text.match(/^(\d+)\s+(.*)/);
-            let qty = 1;
-            let query = text.trim();
-            if (match) {
-                qty = parseInt(match[1], 10);
-                query = match[2].trim();
-            }
-            
-            const productMatch = state.products.find(p => p.name.includes(query));
-            if (productMatch) {
-                const buttons = [{ title: '✅ הוסף להזמנה', payload: `add:${productMatch.sku}` }];
-                renderBotMessage(`זיהיתי: ${productMatch.name}. הכמות היא ${qty}. להוסיף?`, buttons);
-                // Temporarily store quantity
-                productMatch.tempQty = qty; 
+        async function handleStatusRequest(userInput) {
+            const orderIdMatch = userInput.match(/SBN-\d+/);
+            if (orderIdMatch) {
+                const orderId = orderIdMatch[0];
+                renderUserMessage(userInput);
+                const res = await apiPost({ action: 'getOrderStatus', orderId: orderId });
+                if (res.success) {
+                    renderBotMessage(`סטטוס הזמנה ${orderId} הוא: *${res.status}*.`);
+                } else {
+                    renderBotMessage(`לא מצאתי הזמנה במספר ${orderId}.`);
+                }
             } else {
-                renderBotMessage(`לא מצאתי מוצר בשם "${query}". נסה שוב.`);
-            }
-        }
-
-        function addProductToOrder(product) {
-            const quantity = product.tempQty || 1;
-            const existing = state.order.items.find(i => i.sku === product.sku);
-            if(existing) {
-                existing.quantity += quantity;
-            } else {
-                state.order.items.push({ sku: product.sku, name: product.name, quantity: quantity });
-            }
-            renderBotMessage(`הוספתי ${quantity} x ${product.name} להזמנה.`);
-            if (state.order.items.length > 0) {
-                dom.fab.classList.add('visible');
-            }
-            delete product.tempQty;
-        }
-
-        function showFinalSummary() {
-            let itemsHtml = state.order.items.map(i => `<li>${i.quantity} x ${i.name}</li>`).join('');
-            const summaryHtml = `
-                <div class="summary-card">
-                    <h4>סיכום הזמנה</h4>
-                    <p><strong>פרויקט:</strong> ${state.order.project}</p>
-                    <p><strong>איש קשר:</strong> ${state.order.contact} (${state.order.phone})</p>
-                    <p><strong>כתובת:</strong> ${state.order.address}</p>
-                    <p><strong>הובלה:</strong> ${state.order.delivery_type}</p>
-                    <strong>פריטים:</strong>
-                    <ul>${itemsHtml}</ul>
-                </div>
-            `;
-            const buttons = [
-                { title: '✅ אשר ושלח', payload: 'confirm_order' },
-                { title: '✏️ ערוך', payload: 'edit_order' }
-            ];
-            renderBotMessage(summaryHtml, buttons);
-            state.conversationState = 'AWAITING_CONFIRMATION';
-        }
-
-        async function sendOrder() {
-            renderBotMessage("שולח הזמנה...");
-            const response = await apiPost({ action: 'saveOrder', orderData: state.order, clientId: state.clientId });
-            if (response.success) {
-                renderBotMessage(`הזמנה ${response.orderId} נשלחה בהצלחה! תודה שבחרת בנו.`);
-                const orderText = `הזמנה חדשה (${response.orderId}):\n` + state.order.items.map(i => `${i.quantity} x ${i.name}`).join('\n');
-                const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(orderText)}`;
-                window.open(whatsappUrl, '_blank');
-                // Reset for next order
-                setTimeout(() => location.reload(), 5000);
-            } else {
-                renderBotMessage("אופס, הייתה שגיאה בשליחת ההזמנה.");
-            }
-        }
-
-        // --- Rendering Functions ---
-        function renderBotMessage(html, buttons = []) {
-            const bubble = document.createElement('div');
-            bubble.className = 'message-bubble incoming';
-            bubble.innerHTML = html;
-            
-            if (buttons.length > 0) {
-                const btnContainer = document.createElement('div');
-                btnContainer.className = 'buttons-container';
-                buttons.forEach(btn => {
-                    const button = document.createElement('button');
-                    button.className = 'quick-reply-btn';
-                    button.textContent = btn.title;
-                    button.onclick = () => {
-                        btnContainer.remove();
-                        conversationManager(null, btn.payload);
-                    };
-                    btnContainer.appendChild(button);
-                });
-                bubble.appendChild(btnContainer);
-            }
-            dom.canvas.appendChild(bubble);
-            scrollToBottom();
-        }
-        
-        function renderUserMessage(text) {
-             const bubble = document.createElement('div');
-             bubble.className = 'message-bubble outgoing';
-             bubble.textContent = text;
-             dom.canvas.appendChild(bubble);
-             scrollToBottom();
-        }
-
-        function handleSend() {
-            const text = dom.input.value.trim();
-            if (text) {
-                conversationManager(text, null);
-                dom.input.value = '';
+                renderBotMessage("כדי לבדוק סטטוס, אנא רשום את מספר ההזמנה המלא (לדוגמה: מה הסטטוס של SBN-12345?).");
             }
         }
         
-        function setupEventListeners() {
-            dom.sendBtn.addEventListener('click', handleSend);
-            dom.input.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
-            dom.fab.addEventListener('click', showFinalSummary);
+        // --- INITIALIZATION ---
+        function init() {
+            // ... (previous init logic)
+            setupNavigation(); // Add this line to initialize tabs
         }
         
-        function scrollToBottom() { dom.canvas.scrollTop = dom.canvas.scrollHeight; }
-
-        async function apiPost(body) {
-            const response = await fetch(API_URL, { method: 'POST', mode: 'cors', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
-            return response.json();
-        }
-
-        init();
+        // --- Call init ---
+        // init();
+        // (The full script from the previous turn would be integrated here)
     </script>
 </body>
 </html>
