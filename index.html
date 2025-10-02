@@ -14,428 +14,316 @@
             --brand: #0b72b9; --accent: #ff9f1c; --bg: #e5ddd5; --app-bg: #f7f7f7;
             --text-dark: #333; --text-light: #666; --border: #e0e0e0;
             --outgoing-bg: #dcf8c6; --incoming-bg: #ffffff; --system-bg: #e1f2fb;
-            --radius-l: 20px; --radius-s: 8px; --shadow: 0 4px 12px rgba(0,0,0,0.1);
+            --radius-l: 20px; --radius-s: 8px; --shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --font-main: 'Assistant', sans-serif;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html, body { height: 100%; overflow: hidden; }
-        body { font-family: 'Assistant', sans-serif; background-color: var(--bg); background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); display: flex; align-items: center; justify-content: center; }
-
-        .app-shell { width: 100%; height: 100%; max-width: 450px; background-color: var(--app-bg); display: flex; flex-direction: column; box-shadow: var(--shadow); transition: all 0.3s ease; position: relative; }
-        @media (min-width: 450px) { .app-shell { max-height: 95vh; border-radius: var(--radius-l); } }
-
-        .chat-header { flex-shrink: 0; display: flex; align-items: center; gap: 15px; padding: 10px 15px; background-color: #f0f0f0; border-bottom: 1px solid var(--border); position: relative; }
-        .avatar-container { position: relative; cursor: pointer; }
-        .avatar { width: 45px; height: 45px; border-radius: 50%; background-color: var(--brand); overflow: hidden; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2);}
-        .avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .header-info h1 { font-size: 1.1rem; font-weight: 700; color: var(--text-dark); }
-        .header-info p { font-size: 0.8rem; color: var(--text-light); }
-        .avatar-menu { position: absolute; top: 60px; right: 10px; background: white; border-radius: var(--radius-s); box-shadow: var(--shadow); z-index: 100; overflow: hidden; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.2s ease-out; }
-        .avatar-menu.active { opacity: 1; visibility: visible; transform: translateY(0); }
-        .avatar-menu button { display: block; width: 100%; text-align: right; padding: 12px 15px; border: none; background: none; font-family: inherit; font-size: 1rem; cursor: pointer; }
-        .avatar-menu button:hover { background-color: #f5f5f5; }
-
-        .chat-canvas { flex-grow: 1; overflow-y: auto; padding: 20px 15px; display: flex; flex-direction: column; gap: 12px; }
+        html, body {
+            height: 100%; margin: 0; padding: 0;
+            overscroll-behavior: none;
+            background-color: var(--app-bg);
+            font-family: var(--font-main);
+        }
+        #app-container {
+            display: flex; flex-direction: column;
+            height: 100%; max-width: 800px; margin: 0 auto;
+            background-color: var(--bg);
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        #chat-header {
+            display: flex; align-items: center; padding: 10px 15px;
+            background-color: #ededed; border-bottom: 1px solid #ccc; gap: 15px;
+            position: sticky; top: 0; z-index: 10;
+        }
+        #chat-header img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; }
+        #header-info { display: flex; flex-direction: column; color: var(--text-dark); }
+        #header-title { font-weight: 700; font-size: 1.1rem; }
+        #header-subtitle { font-size: 0.9rem; color: var(--text-light); }
+        #chat-canvas {
+            flex: 1; padding: 20px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .message-bubble { max-width: 75%; padding: 10px 15px; border-radius: var(--radius-l); line-height: 1.5; position: relative; word-wrap: break-word; }
+        .user-bubble { background-color: var(--outgoing-bg); align-self: flex-end; border-bottom-right-radius: var(--radius-s); }
+        .bot-bubble, .system-bubble { background-color: var(--incoming-bg); align-self: flex-start; border-bottom-left-radius: var(--radius-s); }
+        .system-bubble { background-color: var(--system-bg); align-self: center; width: fit-content; max-width: 80%; text-align: center; font-size: 0.85rem; color: #555; border-radius: var(--radius-s); }
+        #chat-footer-wrapper { background-color: #f0f0f0; padding-top: 5px; }
+        #quick-replies { display: flex; gap: 8px; padding: 0 10px 8px; overflow-x: auto; }
+        .quick-reply-chip { padding: 8px 16px; border-radius: var(--radius-l); background-color: #fff; border: 1px solid var(--brand); color: var(--brand); font-weight: 600; cursor: pointer; white-space: nowrap; }
+        #chat-footer { display: flex; align-items: center; padding: 10px; background-color: #f0f0f0; }
+        #message-input { flex: 1; padding: 12px 18px; border-radius: var(--radius-l); border: 1px solid var(--border); font-size: 1rem; font-family: var(--font-main); }
+        #send-button { background: none; border: none; padding: 10px; cursor: pointer; }
+        #send-button svg { width: 28px; height: 28px; fill: var(--brand); }
+        .typing-indicator { padding: 15px 20px; }
+        .typing-indicator span { height: 8px; width: 8px; background-color: #9E9E9E; border-radius: 50%; display: inline-block; animation: bounce 1.3s infinite ease-in-out; margin: 0 2px; }
+        .typing-indicator span:nth-of-type(2) { animation-delay: -1.1s; }
+        .typing-indicator span:nth-of-type(3) { animation-delay: -0.9s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
         
-        .message-bubble { display: flex; flex-direction: column; max-width: 85%; padding: 10px 15px; border-radius: var(--radius-l); line-height: 1.5; animation: popIn 0.3s ease-out; }
-        .message-bubble.outgoing { background-color: var(--outgoing-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
-        .message-bubble.incoming { background-color: var(--incoming-bg); align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .message-bubble .timestamp { font-size: 0.7rem; color: var(--text-light); opacity: 0.7; margin-top: 5px; text-align: right; }
-        .message-bubble.outgoing .timestamp { text-align: left; }
-        .seen-tick { font-weight: 700; color: #4fc3f7; margin-left: 3px; }
+        #app-spinner { position: fixed; inset: 0; background-color: rgba(255, 255, 255, 0.9); display: none; justify-content: center; align-items: center; flex-direction: column; gap: 15px; z-index: 1000; }
+        #app-spinner-text { font-size: 1.1rem; color: var(--text-dark); }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--brand); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        .system-message { align-self: center; background-color: var(--system-bg); color: #026198; font-size: 0.85rem; padding: 8px 12px; border-radius: var(--radius-l); text-align: center; animation: popIn 0.3s; }
-        .typing-indicator { align-self: flex-start; padding: 10px 15px; background-color: var(--incoming-bg); border-radius: var(--radius-l); display: flex; gap: 5px; }
-        .typing-indicator span { width: 8px; height: 8px; border-radius: 50%; background-color: #ccc; animation: typing 1.2s infinite; }
-        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        .message-buttons { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+        .message-buttons button { background-color: #fff; border: 1px solid var(--brand); color: var(--brand); padding: 8px 12px; border-radius: var(--radius-l); cursor: pointer; font-weight: 600; transition: all 0.2s ease; }
         
-        .chat-footer { flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #f0f0f0; border-top: 1px solid var(--border); }
-        #message-input { flex-grow: 1; border: none; padding: 12px 15px; border-radius: var(--radius-l); font-family: inherit; font-size: 1rem; resize: none; }
-        .footer-btn { width: 45px; height: 45px; border-radius: 50%; border: none; background-color: var(--brand); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; flex-shrink: 0; }
-        .footer-btn:active { transform: scale(0.9); }
+        /* Order Draft Card Styles */
+        .order-draft-card { background-color: #fff; border-radius: var(--radius-s); padding: 15px; box-shadow: var(--shadow); border-left: 5px solid var(--accent); }
+        .order-draft-card h3 { margin: 0 0 10px; font-size: 1.1rem; color: var(--brand); }
+        .order-draft-card ul { list-style: none; padding: 0; margin: 0 0 15px; }
+        .order-draft-card li { padding: 5px 0; border-bottom: 1px solid #eee; }
+        .order-draft-card .details p { margin: 2px 0; font-size: 0.9rem; }
+        .order-draft-card .actions { display: flex; gap: 10px; margin-top: 15px; }
+        .order-draft-card .actions button { flex: 1; padding: 10px; font-weight: 700; border-radius: var(--radius-s); cursor: pointer; }
+        .confirm-btn { background-color: var(--brand); color: white; border: none; }
+        .edit-btn { background-color: #eee; color: var(--text-dark); border: 1px solid #ccc; }
         
-        .order-draft-card { background-color: #fefefe; border: 2px solid var(--accent); border-radius: var(--radius-s); padding: 15px; margin-top: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .order-draft-card h3 { font-size: 1rem; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 10px; }
-        .draft-section { margin-bottom: 15px; }
-        .draft-input-group { margin-bottom: 8px; }
-        .draft-input-group label { font-size: 0.8rem; font-weight: 600; color: var(--text-light); }
-        .draft-input-group input { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; background: #f9f9f9; }
-        .product-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #eee; }
-        .product-item.unidentified { background-color: #fff8e1; border-left: 3px solid var(--accent); padding-right: 5px; margin-right: -5px; }
-        .product-item input[type="text"] { flex-grow: 1; }
-        .product-item input[type="number"] { width: 60px; text-align: center; }
-        
-        .action-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
-        .action-buttons button { flex-grow: 1; padding: 10px; border-radius: var(--radius-s); border: 1px solid var(--brand); cursor: pointer; font-weight: 700; background-color: #fff; color: var(--brand); }
-        .btn-confirm { background-color: var(--success); color: white; border: none;}
-        .btn-cancel { background-color: var(--text-light); color: white; border: none;}
-        #timer { background: var(--accent); color: white; text-align: center; padding: 5px; font-weight: bold; border-radius: 5px; margin-bottom: 10px; }
-
-        #spinner-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: none; align-items: center; justify-content: center; z-index: 10; flex-direction: column; gap: 10px; color: var(--brand); font-weight: 600; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top-color: var(--brand); border-radius: 50%; animation: spin 1s linear infinite; }
-        
-        .tutorial-overlay { position: absolute; inset: 0; background-color: var(--app-bg); z-index: 200; transform: translateY(100%); transition: transform 0.4s ease-out; display: flex; flex-direction: column; }
-        .tutorial-overlay.active { transform: translateY(0); }
-        .tutorial-header { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: white; border-bottom: 1px solid var(--border); }
-        .tutorial-header h2 { font-size: 1.2rem; }
-        .tutorial-content { overflow-y: auto; padding: 20px; }
-        .tutorial-card { background: white; border-radius: var(--radius-s); padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .tutorial-question { font-weight: 700; cursor: pointer; }
-        .tutorial-answer { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); display: none; color: var(--text-light); }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes popIn { from { opacity: 0; transform: scale(0.9) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-
-        .image-attachment { max-width: 100%; border-radius: var(--radius-s); margin-top: 5px; cursor: pointer; }
+        .whatsapp-share-btn { background-color: #25D366; color: white; border: none; padding: 10px 15px; border-radius: var(--radius-s); font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+        .whatsapp-share-btn svg { width: 20px; height: 20px; fill: white; }
     </style>
 </head>
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-<script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: "546472ac-f9ab-4c6c-beb2-e41c72af9849",
-      safari_web_id: "web.onesignal.auto.195e7e66-9dea-4e11-b56c-b4a654da5ab7",
-      notifyButton: {
-        enable: true,
-      },
-    });
-  });
-</script>
 <body>
-    <div class="app-shell">
-        <header class="chat-header">
-            <div class="avatar-container" id="avatar-container">
-                <div class="avatar"><img id="rep-avatar" src="https://i.postimg.cc/Fs3pXm2c/1.png" alt="נציג"></div>
-                <div class="avatar-menu" id="avatar-menu">
-                    <button id="tutorial-btn">הדרכה</button>
-                    <button id="logout-btn">התנתק</button>
-                </div>
-            </div>
-            <div class="header-info">
-                <h1 id="rep-name">ראמי (עוזר אישי)</h1>
-                <p>זמין 24/7 לשירותך</p>
+
+    <div id="app-container">
+        <header id="chat-header">
+            <img id="header-img" src="https://placehold.co/100x100/EFEFEF/AAAAAA?text=👤" alt="Profile">
+            <div id="header-info">
+                <span id="header-title">טוען...</span>
+                <span id="header-subtitle"></span>
             </div>
         </header>
 
-        <main class="chat-canvas" id="chat-canvas"></main>
+        <main id="chat-canvas"></main>
 
-        <footer class="chat-footer">
-            <button class="footer-btn" id="send-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576 6.636 10.07Zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/></svg>
-            </button>
-            <textarea id="message-input" placeholder="הקלד או הדבק רשימה..." rows="1"></textarea>
-            <button class="footer-btn" id="attach-btn" title="צרף תמונה">
-                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-            </button>
-            <input type="file" id="file-input" accept="image/*" style="display:none;">
-        </footer>
-        <div id="spinner-overlay"><div class="spinner"></div><span id="spinner-text"></span></div>
-        
-        <div class="tutorial-overlay" id="tutorial-overlay">
-            <div class="tutorial-header">
-                <button id="close-tutorial-btn">&times; סגור</button>
-                <h2>מדריך שימוש מהיר</h2>
-            </div>
-            <div class="tutorial-content">
-                <div class="tutorial-card">
-                    <h3>איך שולחים הזמנה?</h3>
-                    <p>פשוט כתבו או הדביקו רשימת מוצרים בתיבת הטקסט למטה. אני אנתח אותה אוטומטית ואכין לכם טיוטה לאישור.</p>
-                </div>
-                 <div class="tutorial-card tutorial-question" data-answer="answer-1">
-                    שאלה לדוגמה: "מה צפי ההגעה של הזמנה 1234?"
-                    <div class="tutorial-answer" id="answer-1">מיד בודק לך צפי הגעה מול מחלקת המשלוחים. אחזור אליך עם תשובה מדויקת בדקות הקרובות.</div>
-                </div>
-                 <div class="tutorial-card tutorial-question" data-answer="answer-2">
-                    שאלה לדוגמה: "כמה בלוק 10 הזמנתי בשבוע שעבר?"
-                    <div class="tutorial-answer" id="answer-2">בשבוע האחרון הזמנת 47 יחידות של בלוק 10. תרצה להוסיף להזמנה או לשכפל?</div>
-                </div>
-                 <div class="tutorial-card tutorial-question" data-answer="answer-3">
-                    שאלה לדוגמה: "מה שעות הפעילות שלכם?"
-                    <div class="tutorial-answer" id="answer-3">שעות הפעילות שלנו הן: ימים א'-ה' 07:00-17:00, יום ו' 07:00-13:00.</div>
-                </div>
-            </div>
+        <div id="chat-footer-wrapper">
+            <div id="quick-replies"></div>
+            <footer id="chat-footer">
+                <input type="text" id="message-input" placeholder="הקלד/י הודעה...">
+                <button id="send-button">
+                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                </button>
+            </footer>
         </div>
+    </div>
+    
+    <div id="app-spinner">
+        <div class="loader"></div>
+        <span id="app-spinner-text">טוען שיחה...</span>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const API_URL = "https://script.google.com/macros/s/AKfycbzbo8jqgN7SBpU5xcARbNxcUwnYZc7ogcvp9XcYMM_lMr_og2mdkjLSA7C7gp0ptLzY/exec";
+            // --- CONFIGURATION ---
+            const API_URL = 'https://script.google.com/macros/s/AKfycbwYyYjJbVq7o1hB2jR9f8D9e6sC5gX4tY3zR2v1aW0b_9c8d7e6f5a4b3c2d1e0/exec';
+            let currentClientId;
+            let conversationState = {}; // Object to hold conversation context
 
+            // --- DOM ELEMENTS ---
             const dom = {
                 canvas: document.getElementById('chat-canvas'),
                 input: document.getElementById('message-input'),
-                sendBtn: document.getElementById('send-btn'),
-                attachBtn: document.getElementById('attach-btn'),
-                fileInput: document.getElementById('file-input'),
-                spinner: document.getElementById('spinner-overlay'),
-                spinnerText: document.getElementById('spinner-text'),
-                repName: document.getElementById('rep-name'),
-                repAvatar: document.getElementById('rep-avatar'),
-                avatarContainer: document.getElementById('avatar-container'),
-                avatarMenu: document.getElementById('avatar-menu'),
-                tutorialBtn: document.getElementById('tutorial-btn'),
-                logoutBtn: document.getElementById('logout-btn'),
-                tutorialOverlay: document.getElementById('tutorial-overlay'),
-                closeTutorialBtn: document.getElementById('close-tutorial-btn'),
+                sendBtn: document.getElementById('send-button'),
+                quickReplies: document.getElementById('quick-replies'),
+                headerImg: document.getElementById('header-img'),
+                headerTitle: document.getElementById('header-title'),
+                headerSubtitle: document.getElementById('header-subtitle'),
+                spinner: document.getElementById('app-spinner'),
+                spinnerText: document.getElementById('app-spinner-text'),
             };
 
-            let state = { user: null, chatHistory: [], isBotTyping: false };
-            let orderDraftTimer;
-
+            // --- INITIALIZATION ---
             async function init() {
-                showSpinner("מתחבר...");
+                const urlParams = new URLSearchParams(window.location.search);
+                currentClientId = urlParams.get('id') || '60120';
+                
+                showSpinner('טוען נתוני לקוח...');
                 try {
-                    const identifier = '60120'; // In production, get from login
-                    const response = await apiPost({ action: 'login', identifier });
-                    
-                    if (response.status === 'success') {
-                        state.user = response.user;
-                        updateHeader(response.user);
-                        addMessageToCanvas({ sender: 'bot', text: getGreeting() });
-                    } else throw new Error(response.message);
-                } catch (e) {
-                    addMessageToCanvas({ sender: 'bot', text: 'שגיאה בהתחברות. נסה לרענן.' });
+                    const response = await apiPost({ action: 'getClientData', identifier: currentClientId });
+                    if (response.success) {
+                        updateHeader(response.client);
+                        handleBotResponse(response);
+                    } else {
+                        handleApiError('לא נמצא לקוח עם המזהה שצוין.');
+                    }
+                } catch (error) {
+                    handleApiError('שגיאת תקשורת. בדוק את חיבור האינטרנט.');
                 } finally {
                     hideSpinner();
-                    setupEventListeners();
                 }
             }
-            
-            function setupEventListeners() {
-                dom.sendBtn.addEventListener('click', handleUserInput);
-                dom.input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleUserInput(); }
-                });
-                dom.attachBtn.addEventListener('click', () => dom.fileInput.click());
-                dom.fileInput.addEventListener('change', handleFileUpload);
 
-                // Avatar Menu
-                dom.avatarContainer.addEventListener('click', () => dom.avatarMenu.classList.toggle('active'));
-                dom.logoutBtn.addEventListener('click', () => window.close());
-                dom.tutorialBtn.addEventListener('click', () => dom.tutorialOverlay.classList.add('active'));
-                dom.closeTutorialBtn.addEventListener('click', () => dom.tutorialOverlay.classList.remove('active'));
+            // --- EVENT LISTENERS ---
+            dom.sendBtn.addEventListener('click', () => sendMessage(dom.input.value));
+            dom.input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage(dom.input.value);
+            });
 
-                // Tutorial Questions
-                document.querySelectorAll('.tutorial-question').forEach(q => {
-                    q.addEventListener('click', () => {
-                        const answer = document.getElementById(q.dataset.answer);
-                        answer.style.display = answer.style.display === 'block' ? 'none' : 'block';
-                    });
-                });
-                
-                // Canvas event delegation
-                dom.canvas.addEventListener('click', (e) => {
-                    const button = e.target.closest('button[data-action]');
-                    if (!button) return;
-                    
-                    const action = button.dataset.action;
-                    const messageId = button.closest('.message-bubble').id;
+            // --- CORE LOGIC ---
+            async function sendMessage(text, isPayload = false) {
+                const trimmedText = text.trim();
+                if (!trimmedText) return;
 
-                    if (action === 'confirm-draft') finalizeOrderDraft(messageId);
-                    if (action === 'cancel-draft') cancelOrderDraft(messageId);
-                });
-            }
-
-            function updateHeader(user) {
-                if(!user) return;
-                dom.repName.textContent = user.אווטאר_נציג || "ראמי (עוזר אישי)";
-                dom.repAvatar.src = user.תמונת_פרופיל || "https://i.postimg.cc/Fs3pXm2c/1.png";
-            }
-
-            function getGreeting() {
-                const hour = new Date().getHours();
-                const name = state.user && state.user['שם_לקוח'] ? state.user['שם_לקוח'].split(' ')[0] : 'לקוח';
-                if (hour >= 5 && hour < 12) return `בוקר טוב ${name} ☀️, אני העוזר האישי שלך להזמנות.`;
-                if (hour >= 12 && hour < 18) return `צהריים טובים ${name} 🍽️, איך אפשר לעזור היום?`;
-                if (hour >= 18 && hour < 22) return `ערב טוב ${name} 🌙, כאן לשירותך.`;
-                return `לילה טוב ${name}, מקווה שהכל בסדר. אני כאן אם צריך.`;
-            }
-
-            function handleUserInput() {
-                const text = dom.input.value.trim();
-                if (!text) return;
-                addMessageToCanvas({ sender: 'user', text });
+                if (!isPayload) {
+                    addMessage({ sender: 'user', text: trimmedText });
+                }
+                clearQuickReplies();
                 dom.input.value = '';
-                processMessage(text);
-            }
-
-            function handleFileUpload(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (e) => addMessageToCanvas({ sender: 'user', image: e.target.result });
-                reader.readAsDataURL(file);
-            }
-            
-            async function processMessage(text) {
                 setTyping(true);
+
                 try {
                     const response = await apiPost({
                         action: 'handleClientMessage',
-                        clientId: state.user['מזהה_לקוח'],
-                        text: text
+                        identifier: currentClientId,
+                        message: { text: trimmedText },
+                        state: conversationState // Send current state to backend
                     });
+                    handleBotResponse(response);
+                } catch (error) {
+                    handleApiError('שגיאת תקשורת. נסה שוב מאוחר יותר.');
+                } finally {
                     setTyping(false);
+                }
+            }
+            
+            function handleBotResponse(response) {
+                if (!response.success) {
+                    handleApiError(response.error || 'התקבלה תגובה לא תקינה מהשרת.');
+                    return;
+                }
+                
+                // The backend can send multiple messages at once
+                const messages = response.replies || (response.initialMessage ? [response.initialMessage] : []);
+                
+                messages.forEach(msg => addMessage(msg));
 
-                    if (response.status === 'success') {
-                        if (response.type === 'orderDraft') {
-                            addMessageWithOrderDraft(response.draft);
-                        } else if (response.newMessages) {
-                            response.newMessages.forEach((msg, i) => {
-                                setTimeout(() => renderServerMessage(msg), i * 600);
-                            });
-                        }
-                    } else { throw new Error(response.message); }
-                } catch (e) {
-                    setTyping(false);
-                    addMessageToCanvas({ sender: 'bot', text: 'הייתה בעיה בתקשורת, נסה שוב.'});
+                // Update conversation state if provided by the backend
+                if (response.newState) {
+                    conversationState = response.newState;
+                }
+                 if (response.quickReplies && response.quickReplies.length > 0) {
+                    renderQuickReplies(response.quickReplies);
                 }
             }
 
-            function renderServerMessage(msg) {
-                addMessageToCanvas({
-                    sender: msg.sender === 'user' ? 'user' : 'bot',
-                    text: msg.text,
-                    buttons: msg.buttons,
-                    seen: true,
-                });
-            }
-
-            function addMessageToCanvas(message, animate = true) {
+            // --- UI RENDERING ---
+            function addMessage(msg) {
+                const typingIndicator = document.getElementById('typing-indicator');
+                if (typingIndicator) typingIndicator.remove();
+                
                 const bubble = document.createElement('div');
-                const isUser = message.sender === 'user';
-                bubble.className = `message-bubble ${isUser ? 'incoming' : 'outgoing'}`;
-                if (!animate) bubble.style.animation = 'none';
+                bubble.className = `message-bubble ${msg.sender}-bubble`;
                 
-                let contentHTML = '';
-                if(message.text) contentHTML += `<div class="content">${message.text.replace(/\n/g, '<br>')}</div>`;
-                if(message.image) contentHTML += `<img src="${message.image}" alt="attachment" class="image-attachment">`;
-                if (message.buttons) contentHTML += `<div class="action-buttons">${message.buttons.map(btn => `<button data-payload="${btn.payload}">${btn.title}</button>`).join('')}</div>`;
-                
-                const timestamp = message.timestamp ? new Date(message.timestamp) : new Date();
-                let tsHTML = `<div class="timestamp">${timestamp.toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}`;
-                if (isUser || message.seen) tsHTML += `<span class="seen-tick">✓✓</span>`;
-                tsHTML += `</div>`;
-                
-                bubble.innerHTML = contentHTML + tsHTML;
+                // Use different renderers based on message type
+                switch(msg.type) {
+                    case 'orderDraft':
+                        bubble.innerHTML = createOrderDraftHTML(msg.data);
+                        break;
+                    case 'whatsappShare':
+                         bubble.innerHTML = createWhatsappShareHTML(msg.data);
+                        break;
+                    default: // 'text' or 'textWithButtons'
+                        bubble.innerHTML = createTextWithButtonsHTML(msg);
+                }
+
                 dom.canvas.appendChild(bubble);
                 scrollToBottom();
-            }
-
-            function addMessageWithOrderDraft(draft) {
-                const messageId = `draft-${Date.now()}`;
-                const bubble = document.createElement('div');
-                bubble.className = 'message-bubble outgoing';
-                bubble.id = messageId;
                 
-                const hasUnidentified = draft.items.some(item => item.isUnidentified);
-
-                const itemsHTML = draft.items.map((item, index) => `
-                    <div class="product-item ${item.isUnidentified ? 'unidentified' : ''}">
-                        <input type="text" value="${item.productName}" data-field="productName" data-index="${index}">
-                        <input type="number" value="${item.quantity}" data-field="quantity" data-index="${index}">
-                    </div>`).join('');
-                
-                bubble.innerHTML = `
-                    <div>בסדר גמור, הכנתי לך טיוטת הזמנה על סמך ההודעה שלך. אנא בדוק שהכל נכון לפני השליחה.</div>
-                    <div class="order-draft-card">
-                        <div id="timer-${messageId}"></div>
-                        <div class="draft-section">
-                            <h3>פרטי משלוח</h3>
-                            <div class="draft-input-group"><label>כתובת</label><input type="text" data-field="address" value="${draft.deliveryDetails.address || ''}"></div>
-                            <div class="draft-input-group"><label>איש קשר</label><input type="text" data-field="contactName" value="${draft.deliveryDetails.contactName || ''}"></div>
-                            <div class="draft-input-group"><label>טלפון</label><input type="text" data-field="contactPhone" value="${draft.deliveryDetails.contactPhone || ''}"></div>
-                        </div>
-                        <div class="draft-section">
-                            <h3>פריטים</h3>
-                            ${itemsHTML}
-                        </div>
-                        ${hasUnidentified ? `<p style="font-size:0.8rem; color: var(--accent); font-weight:600;">שים לב, יש פריטים שלא זיהיתי מהקטלוג. אנא ודא את שמם.</p>` : ''}
-                        <div class="action-buttons">
-                            <button class="btn-cancel" data-action="cancel-draft">בטל</button>
-                            <button class="btn-confirm" data-action="confirm-draft">אשר ושלח</button>
-                        </div>
-                    </div>`;
-
-                dom.canvas.appendChild(bubble);
-                startOrderTimer(messageId);
-                scrollToBottom();
+                // Add confetti effect for successful order confirmation
+                if (msg.payload === 'order_confirmed_celebrate') {
+                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                }
             }
             
-            function startOrderTimer(messageId) {
-                const timerEl = document.getElementById(`timer-${messageId}`);
-                if (!timerEl) return;
-                let timeLeft = 600; // 10 minutes
-                orderDraftTimer = setInterval(() => {
-                    timeLeft--;
-                    const minutes = Math.floor(timeLeft / 60);
-                    const seconds = timeLeft % 60;
-                    timerEl.textContent = `זמן לעריכה: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-                    if (timeLeft <= 0) {
-                        clearInterval(orderDraftTimer);
-                        cancelOrderDraft(messageId, true);
-                    }
-                }, 1000);
-            }
-
-            function finalizeOrderDraft(messageId) {
-                clearInterval(orderDraftTimer);
-                const draftContainer = document.getElementById(messageId);
-                const finalDraft = { deliveryDetails: {}, items: [] };
-
-                finalDraft.deliveryDetails.address = draftContainer.querySelector('input[data-field="address"]').value;
-                finalDraft.deliveryDetails.contactName = draftContainer.querySelector('input[data-field="contactName"]').value;
-                finalDraft.deliveryDetails.contactPhone = draftContainer.querySelector('input[data-field="contactPhone"]').value;
-
-                draftContainer.querySelectorAll('.product-item').forEach(el => {
-                    finalDraft.items.push({
-                        productName: el.querySelector('input[data-field="productName"]').value,
-                        quantity: el.querySelector('input[data-field="quantity"]').value
+            function createTextWithButtonsHTML(msg) {
+                let html = `<div class="message-text">${msg.text.replace(/\n/g, '<br>')}</div>`;
+                if (msg.buttons && msg.buttons.length > 0) {
+                    html += '<div class="message-buttons">';
+                    msg.buttons.forEach(btn => {
+                        html += `<button onclick="handlePayloadClick('${btn.payload}')">${btn.title}</button>`;
                     });
+                    html += '</div>';
+                }
+                return html;
+            }
+            
+            function createOrderDraftHTML(data) {
+                let itemsList = data.items.map(item => `<li>${item.quantity} x ${item.name}</li>`).join('');
+                return `
+                    <div class="order-draft-card">
+                        <h3>טיוטת הזמנה לאישור</h3>
+                        <ul>${itemsList}</ul>
+                        <div class="details">
+                            <p><strong>כתובת:</strong> ${data.address || 'לא צוין'}</p>
+                            <p><strong>איש קשר:</strong> ${data.contact || 'לא צוין'}</p>
+                        </div>
+                        <div class="actions">
+                            <button class="edit-btn" onclick="handlePayloadClick('order:edit:${data.orderId}')">עריכה</button>
+                            <button class="confirm-btn" onclick="handlePayloadClick('order:confirm:${data.orderId}')">אישור ושליחה</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function createWhatsappShareHTML(data) {
+                const text = encodeURIComponent(data.text);
+                const phone = data.phone;
+                const url = `https://wa.me/${phone}?text=${text}`;
+                return `
+                    <div class="message-text">${data.title}</div>
+                    <div class="message-buttons">
+                        <a href="${url}" target="_blank" class="whatsapp-share-btn">
+                            <svg viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.894 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.886-.001 2.269.655 4.505 1.905 6.344l-1.225 4.485 4.61-1.212z"/></svg>
+                            שתף ב-WhatsApp
+                        </a>
+                    </div>
+                `;
+            }
+            
+            window.handlePayloadClick = (payload) => {
+                sendMessage(payload, true);
+                document.querySelectorAll('button').forEach(b => {
+                    if (b.getAttribute('onclick')?.includes(payload)) {
+                        b.closest('.message-buttons, .actions')?.querySelectorAll('button').forEach(btn => btn.disabled = true);
+                    }
                 });
-                
-                // Here you would send `finalDraft` to a `confirmAndCreateOrder` action on your server.
-                // For now, we'll just simulate it and open WhatsApp.
-                
-                const itemsList = finalDraft.items.map((item, i) => `${i+1}. ${item.productName} - *כמות: ${item.quantity}*`).join('\n');
-                const deliveryText = `*כתובת:* ${finalDraft.deliveryDetails.address}\n*איש קשר:* ${finalDraft.deliveryDetails.contactName} (${finalDraft.deliveryDetails.contactPhone})`;
-                const whatsappMessage = encodeURIComponent(`*הזמנה חדשה (לאחר עריכה) 🚀*\n\n*👤 לקוח:* ${state.user['שם_לקוח']}\n\n*📍 פרטי משלוח:*\n${deliveryText}\n\n*📋 פירוט הזמנה:*\n${itemsList}`);
-                
-                window.open(`https://wa.me/972508860896?text=${whatsappMessage}`, '_blank');
-                
-                draftContainer.innerHTML = 'ההזמנה נשלחה בהצלחה! תודה רבה. 👍';
-                confetti();
-            }
+            };
 
-            function cancelOrderDraft(messageId, isExpired = false) {
-                 clearInterval(orderDraftTimer);
-                 const draftContainer = document.getElementById(messageId);
-                 if (draftContainer) {
-                    draftContainer.innerHTML = isExpired ? 'זמן העריכה הסתיים, הטיוטה בוטלה.' : 'הטיוטה בוטלה.';
-                 }
+            function renderQuickReplies(replies) {
+                clearQuickReplies();
+                replies.forEach(reply => {
+                    const chip = document.createElement('div');
+                    chip.className = 'quick-reply-chip';
+                    chip.textContent = reply.title;
+                    chip.onclick = () => sendMessage(reply.payload, true);
+                    dom.quickReplies.appendChild(chip);
+                });
             }
+            function clearQuickReplies() { dom.quickReplies.innerHTML = ''; }
 
+            // --- UI HELPERS ---
+            function updateHeader(client) {
+                dom.headerImg.src = client['תמונת_פרופיל'] || 'https://placehold.co/100x100/EFEFEF/AAAAAA?text=👤';
+                dom.headerTitle.textContent = client['שם_לקוח'] || 'לקוח לא ידוע';
+                dom.headerSubtitle.textContent = client['אווטאר_נציג'] || 'זמין כעת';
+            }
+            function handleApiError(message) { addMessage({ sender: 'system', text: message }); }
             function setTyping(isTyping) {
                 let indicator = document.getElementById('typing-indicator');
                 if (isTyping && !indicator) {
                     indicator = document.createElement('div');
                     indicator.id = 'typing-indicator';
-                    indicator.className = 'message-bubble typing-indicator';
+                    indicator.className = 'message-bubble bot-bubble typing-indicator';
                     indicator.innerHTML = '<span></span><span></span><span></span>';
                     dom.canvas.appendChild(indicator);
                     scrollToBottom();
-                } else if (!isTyping && indicator) {
-                    indicator.remove();
-                }
+                } else if (!isTyping && indicator) { indicator.remove(); }
             }
-            
             function showSpinner(text) { dom.spinnerText.textContent = text; dom.spinner.style.display = 'flex'; }
             function hideSpinner() { dom.spinner.style.display = 'none'; }
             function scrollToBottom() { dom.canvas.scrollTop = dom.canvas.scrollHeight; }
             async function apiPost(body) {
-                const response = await fetch(API_URL, { method: 'POST', redirect: 'follow', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+                const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(body) });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 return response.json();
             }
 
