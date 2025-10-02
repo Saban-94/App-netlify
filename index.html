@@ -3,1564 +3,445 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>אזור אישי - ח.סבן | אפליקציה מורחבת</title>
-    <meta name="theme-color" content="#38bdf8"/> <!-- צבע כחול חדש -->
+    <title>העוזר האישי להזמנות - ח.סבן</title>
     <link rel="manifest" href="./manifest.json">
     <link rel="apple-touch-icon" href="https://i.postimg.cc/2SbDgD1B/1.png">
-    <link rel="icon" href="https://i.postimg.cc/2SbDgD1B/1.png">
-
-    <!-- Leaflet CSS for Maps - FIX: Removed integrity attribute to solve SRI error -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <!-- Font Awesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
-        xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJz/fQYl5K8cQ6Qd/T2n/uA7B9S0S5S5bW4e7lQ8hE5fL5d5e5/j1w+f5f+A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
-    <!-- OneSignal SDK for Push Notifications -->
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-    
-    <!-- OneSignal and Global Functions -->
-    <script>
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        
-        /** Displays a temporary toast notification. (Defined globally) */
-        window.showToast = function (message, type = 'info') {
-            const toast = document.getElementById('toast');
-            if (!toast) return;
-
-            toast.textContent = message;
-            toast.style.backgroundColor = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#333';
-            toast.style.display = 'block';
-            setTimeout(() => {
-                toast.style.opacity = '1';
-            }, 10); // Trigger transition
-            
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.style.display = 'none', 500);
-            }, 3000);
-        }
-        
-        /** Controls the visibility of fullscreen modals. (Defined globally) */
-        window.closeModal = function (id) {
-            document.getElementById(id)?.classList.remove('active');
-        }
-        
-        // פונקציה לביצוע שיוך External User ID ועדכון סטטוסים.
-        async function setOneSignalExternalId(clientId) {
-            if (!clientId || !window.OneSignalDeferred) return;
-            
-            window.OneSignalDeferred.push(async function(OneSignal) {
-                try {
-                    // *** FIX: Check if OneSignal.User exists before calling setExternalId ***
-                    if (OneSignal.User && OneSignal.User.setExternalId) {
-                        console.log("OneSignal User ready. Setting External ID:", clientId);
-                        await OneSignal.User.setExternalId(clientId);
-                        console.log("External ID set successfully.");
-                    } else {
-                        // This path should ideally not be hit if the SDK loaded correctly
-                        console.warn("OneSignal.User is not ready or setExternalId is missing.");
-                    }
-                } catch (error) {
-                    console.error("Error setting OneSignal External ID:", error);
-                    window.showToast('שגיאה בשיוך התראות!', 'error'); // Using global showToast
-                }
-            });
-        }
-        
-        // Initial OneSignal setup (Mock App ID)
-        window.OneSignalDeferred.push(function(OneSignal) {
-            try {
-                // FIX: Check if OneSignal is initialized before re-initializing (prevents "AppID doesn't match")
-                if (!OneSignal.isPushNotificationsSupported() && !OneSignal.isPushNotificationsEnabled()) {
-                    OneSignal.init({
-                        appId: "MOCK-APP-ID-ACC8A2BC", // Replace with your actual OneSignal App ID
-                        allowLocalhostAsSecure: true,
-                        autoResubscribe: true // Ensure subscription logic is robust
-                    });
-                }
-            } catch (error) {
-                console.error("OneSignal Initialization Failed:", error);
-            }
-        });
-    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
     <style>
-        /* CSS Variables - For easy theming */
         :root {
-            --primary-color: #38bdf8; /* Sky blue */
-            --secondary-color: #0c4a6e; /* Dark blue */
-            --background-color: #f8fafc; /* Light gray-blue */
-            --card-background: #ffffff;
-            --text-color: #1f2937;
-            --border-radius: 12px;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            --transition: all 0.3s ease;
+            --brand: #0b72b9; --accent: #ff9f1c; --bg: #e5ddd5; --app-bg: #f7f7f7;
+            --text-dark: #333; --text-light: #666; --border: #e0e0e0;
+            --outgoing-bg: #dcf8c6; --incoming-bg: #ffffff; --system-bg: #e1f2fb;
+            --radius-l: 20px; --radius-s: 8px; --shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; overflow: hidden; }
+        body { font-family: 'Assistant', sans-serif; background-color: var(--bg); background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); display: flex; align-items: center; justify-content: center; }
 
-        /* Base Styles and Typography */
-        * { box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--background-color);
-            color: var(--text-color);
-            margin: 0;
-            padding-top: 56px; /* Space for fixed header */
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-        h1, h2, h3 { color: var(--secondary-color); margin-bottom: 0.5rem; }
-        p { margin-top: 0; }
+        .app-shell { width: 100%; height: 100%; max-width: 450px; background-color: var(--app-bg); display: flex; flex-direction: column; box-shadow: var(--shadow); transition: all 0.3s ease; position: relative; }
+        @media (min-width: 450px) { .app-shell { max-height: 95vh; border-radius: var(--radius-l); } }
 
-        /* Header (Navigation Bar) */
-        header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 56px;
-            background-color: var(--primary-color);
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 1rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            z-index: 100;
-        }
-        header .logo { font-size: 1.25rem; font-weight: bold; }
-        header .header-actions { display: flex; align-items: center; gap: 8px; }
+        .chat-header { flex-shrink: 0; display: flex; align-items: center; gap: 15px; padding: 10px 15px; background-color: #f0f0f0; border-bottom: 1px solid var(--border); position: relative; }
+        .avatar-container { position: relative; cursor: pointer; }
+        .avatar { width: 45px; height: 45px; border-radius: 50%; background-color: var(--brand); overflow: hidden; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2);}
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .header-info h1 { font-size: 1.1rem; font-weight: 700; color: var(--text-dark); }
+        .header-info p { font-size: 0.8rem; color: var(--text-light); }
+        .avatar-menu { position: absolute; top: 60px; right: 10px; background: white; border-radius: var(--radius-s); box-shadow: var(--shadow); z-index: 100; overflow: hidden; opacity: 0; visibility: hidden; transform: translateY(-10px); transition: all 0.2s ease-out; }
+        .avatar-menu.active { opacity: 1; visibility: visible; transform: translateY(0); }
+        .avatar-menu button { display: block; width: 100%; text-align: right; padding: 12px 15px; border: none; background: none; font-family: inherit; font-size: 1rem; cursor: pointer; }
+        .avatar-menu button:hover { background-color: #f5f5f5; }
 
-        /* General Buttons */
-        .btn {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            font-weight: 600;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            box-shadow: var(--shadow);
-        }
-        .btn:hover { background-color: #0ea5e9; transform: translateY(-1px); box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1); }
-        .btn.btn-secondary { background-color: #f1f5f9; color: var(--secondary-color); }
-        .btn.btn-secondary:hover { background-color: #e2e8f0; }
-
-        /* Navigation Bar (Footer for Mobile) */
-        nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 60px;
-            background-color: var(--card-background);
-            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 90;
-        }
-        nav button {
-            background: none;
-            border: none;
-            color: var(--text-color);
-            font-size: 0.75rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 5px;
-            gap: 3px;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-        nav button.active { color: var(--primary-color); font-weight: 600; }
-        nav button:hover { color: var(--primary-color); }
-
-        /* Main Content Area */
-        main {
-            padding: 1rem 1rem 70px 1rem; /* Padding for footer nav */
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        /* Page Management */
-        .page {
-            display: none;
-            animation: fadeIn 0.4s ease-in-out;
-        }
-        .page.active { display: block; }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Card Component */
-        .card {
-            background-color: var(--card-background);
-            border-radius: var(--border-radius);
-            padding: 1rem;
-            margin-bottom: 1rem;
-            box-shadow: var(--shadow);
-            border: 1px solid #e2e8f0;
-        }
-
-        /* Status Badges */
-        .status-badge {
-            display: inline-block;
-            padding: 0.3rem 0.6rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-align: center;
-        }
-        .status-badge.active { background-color: #10b981; color: white; } /* ירוק */
-        .status-badge.pending { background-color: #f59e0b; color: white; } /* כתום */
-        .status-badge.in-transit { background-color: #3b82f6; color: white; } /* כחול */
-        .status-badge.history { background-color: #94a3b8; color: white; } /* אפור */
-        .status-badge.error { background-color: #ef4444; color: white; } /* אדום */
-
-        /* Input Fields */
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #cbd5e1;
-            border-radius: var(--border-radius);
-            font-size: 1rem;
-            transition: border-color 0.2s;
-        }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-            border-color: var(--primary-color);
-            outline: none;
-        }
-
-        /* Map Styles */
-        .map-container { height: 150px; border-radius: var(--border-radius); margin-top: 0.5rem; }
-
-        /* --- New/Modified Component Styles --- */
-
-        /* Fullscreen Overlay / Modal */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 200;
-            padding: 20px;
-        }
-        .modal-overlay.active { display: flex; }
-        .modal-content {
-            background-color: var(--card-background);
-            padding: 1.5rem;
-            border-radius: var(--border-radius);
-            max-width: 95%;
-            width: 400px;
-            text-align: center;
-            box-shadow: var(--shadow);
-            animation: slideIn 0.3s ease-out;
-            position: relative;
-        }
-        .modal-close {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #94a3b8;
-        }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(50px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Welcome Modal */
-        #welcome-modal .modal-content { width: 300px; }
-
-        /* Guide Page (Tutorial) Styles */
-        #page-guide .accordion-item {
-            border: 1px solid #e2e8f0;
-            margin-bottom: 10px;
-            border-radius: var(--border-radius);
-            overflow: hidden;
-        }
-        #page-guide .accordion-header {
-            background-color: var(--card-background);
-            padding: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background-color 0.2s;
-        }
-        #page-guide .accordion-header:hover { background-color: #f8fafc; }
-        #page-guide .accordion-header i { transition: transform 0.3s; }
-        #page-guide .accordion-item.open .accordion-header i { transform: rotate(-180deg); }
-
-        #page-guide .accordion-content {
-            padding: 0 1rem;
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s ease-out;
-            background-color: #f8fafc;
-        }
-        #page-guide .content-inner { padding: 1rem 0; }
-        #page-guide .content-inner img { max-width: 100%; height: auto; border-radius: 8px; margin-top: 10px; border: 1px solid #ddd; }
-        #page-guide .guide-actions { display: flex; justify-content: space-between; margin-top: 10px; }
-
-        /* Chat Page (Messaging) Styles */
-        #page-chat .chat-header {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 1rem;
-            border-radius: var(--border-radius) var(--border-radius) 0 0;
-            margin: -1rem -1rem 1rem -1rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        #page-chat .chat-header i { font-size: 1.5rem; }
-
-        .message-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-height: 60vh;
-            overflow-y: auto;
-            padding: 10px;
-            border: 1px solid #e2e8f0;
-            border-radius: var(--border-radius);
-            background-color: #fff;
-        }
-        .message-item {
-            padding: 0.75rem;
-            border-radius: var(--border-radius);
-            max-width: 85%;
-            position: relative;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            line-height: 1.4;
-        }
-        .message-item.system {
-            align-self: flex-start;
-            background-color: #e0f2fe; /* כחול בהיר */
-        }
-        .message-item.user {
-            align-self: flex-end;
-            background-color: #d1fae5; /* ירוק בהיר */
-        }
-        .message-item .message-number {
-            position: absolute;
-            top: -5px;
-            right: 10px;
-            font-size: 0.6rem;
-            color: #94a3b8;
-        }
-        .message-item:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            bottom: -5px;
-            left: 5%;
-            right: 5%;
-            height: 1px;
-            background-color: #f1f5f9;
-        }
+        .chat-canvas { flex-grow: 1; overflow-y: auto; padding: 20px 15px; display: flex; flex-direction: column; gap: 12px; }
         
-        .message-item .message-status {
-            font-size: 0.7rem;
-            color: var(--secondary-color);
-            margin-top: 5px;
-            display: block;
-            text-align: end;
-        }
+        .message-bubble { display: flex; flex-direction: column; max-width: 85%; padding: 10px 15px; border-radius: var(--radius-l); line-height: 1.5; animation: popIn 0.3s ease-out; }
+        .message-bubble.outgoing { background-color: var(--outgoing-bg); align-self: flex-end; border-bottom-right-radius: 4px; }
+        .message-bubble.incoming { background-color: var(--incoming-bg); align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .message-bubble .timestamp { font-size: 0.7rem; color: var(--text-light); opacity: 0.7; margin-top: 5px; text-align: right; }
+        .message-bubble.outgoing .timestamp { text-align: left; }
+        .seen-tick { font-weight: 700; color: #4fc3f7; margin-left: 3px; }
+        
+        .system-message { align-self: center; background-color: var(--system-bg); color: #026198; font-size: 0.85rem; padding: 8px 12px; border-radius: var(--radius-l); text-align: center; animation: popIn 0.3s; }
+        .typing-indicator { align-self: flex-start; padding: 10px 15px; background-color: var(--incoming-bg); border-radius: var(--radius-l); display: flex; gap: 5px; }
+        .typing-indicator span { width: 8px; height: 8px; border-radius: 50%; background-color: #ccc; animation: typing 1.2s infinite; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        
+        .chat-footer { flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 10px; background-color: #f0f0f0; border-top: 1px solid var(--border); }
+        #message-input { flex-grow: 1; border: none; padding: 12px 15px; border-radius: var(--radius-l); font-family: inherit; font-size: 1rem; resize: none; }
+        .footer-btn { width: 45px; height: 45px; border-radius: 50%; border: none; background-color: var(--brand); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; flex-shrink: 0; }
+        .footer-btn:active { transform: scale(0.9); }
+        
+        .order-draft-card { background-color: #fefefe; border: 2px solid var(--accent); border-radius: var(--radius-s); padding: 15px; margin-top: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .order-draft-card h3 { font-size: 1rem; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 10px; }
+        .draft-section { margin-bottom: 15px; }
+        .draft-input-group { margin-bottom: 8px; }
+        .draft-input-group label { font-size: 0.8rem; font-weight: 600; color: var(--text-light); }
+        .draft-input-group input { width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; background: #f9f9f9; }
+        .product-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed #eee; }
+        .product-item.unidentified { background-color: #fff8e1; border-left: 3px solid var(--accent); padding-right: 5px; margin-right: -5px; }
+        .product-item input[type="text"] { flex-grow: 1; }
+        .product-item input[type="number"] { width: 60px; text-align: center; }
+        
+        .action-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+        .action-buttons button { flex-grow: 1; padding: 10px; border-radius: var(--radius-s); border: 1px solid var(--brand); cursor: pointer; font-weight: 700; background-color: #fff; color: var(--brand); }
+        .btn-confirm { background-color: var(--success); color: white; border: none;}
+        .btn-cancel { background-color: var(--text-light); color: white; border: none;}
+        #timer { background: var(--accent); color: white; text-align: center; padding: 5px; font-weight: bold; border-radius: 5px; margin-bottom: 10px; }
 
-        /* Typing Indicator */
-        .typing-indicator {
-            display: none;
-            align-items: center;
-            gap: 5px;
-            font-style: italic;
-            color: #94a3b8;
-            padding: 10px;
-        }
-        .typing-indicator.active { display: flex; }
-        .typing-dot {
-            width: 8px;
-            height: 8px;
-            background-color: #94a3b8;
-            border-radius: 50%;
-            animation: bounce 1.4s infinite ease-in-out both;
-        }
-        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-        .typing-dot:nth-child(3) { animation-delay: 0s; }
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
-        }
+        #spinner-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: none; align-items: center; justify-content: center; z-index: 10; flex-direction: column; gap: 10px; color: var(--brand); font-weight: 600; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top-color: var(--brand); border-radius: 50%; animation: spin 1s linear infinite; }
+        
+        .tutorial-overlay { position: absolute; inset: 0; background-color: var(--app-bg); z-index: 200; transform: translateY(100%); transition: transform 0.4s ease-out; display: flex; flex-direction: column; }
+        .tutorial-overlay.active { transform: translateY(0); }
+        .tutorial-header { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: white; border-bottom: 1px solid var(--border); }
+        .tutorial-header h2 { font-size: 1.2rem; }
+        .tutorial-content { overflow-y: auto; padding: 20px; }
+        .tutorial-card { background: white; border-radius: var(--radius-s); padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .tutorial-question { font-weight: 700; cursor: pointer; }
+        .tutorial-answer { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); display: none; color: var(--text-light); }
 
-        /* Chat Input Area */
-        .chat-input-area {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 1rem;
-            padding: 0 10px;
-        }
-        .chat-input-area .input-row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        #chatInput { flex-grow: 1; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.9) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
-        /* Search Highlight */
-        .highlight {
-            background-color: #fef08a; /* צהוב עדין */
-            animation: highlight-pulse 1.5s infinite alternate;
-            padding: 2px 0;
-            border-radius: 2px;
-        }
-        @keyframes highlight-pulse {
-            from { background-color: #fef08a; }
-            to { background-color: #fcd34d; }
-        }
-
-        /* Floating Search Icon */
-        #search-float-icon {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.25rem;
-            cursor: pointer;
-            margin-left: 10px;
-            transition: var(--transition);
-        }
-        #search-float-icon:hover { color: #fef08a; }
-
-        /* General Layout Flex Fix */
-        .flex-row { display: flex; gap: 10px; }
-
-        /* ETA Card Animation (Existing) */
-        .eta-road { height: 10px; background: linear-gradient(to right, #4ade80, #facc15, #ef4444); border-radius: 5px; margin-top: 5px; position: relative; }
-        .eta-truck {
-            position: absolute;
-            top: -15px;
-            font-size: 1.5rem;
-            transition: left 2s ease-in-out;
-            color: #3b82f6;
-        }
+        .image-attachment { max-width: 100%; border-radius: var(--radius-s); margin-top: 5px; cursor: pointer; }
     </style>
 </head>
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "546472ac-f9ab-4c6c-beb2-e41c72af9849",
+      safari_web_id: "web.onesignal.auto.195e7e66-9dea-4e11-b56c-b4a654da5ab7",
+      notifyButton: {
+        enable: true,
+      },
+    });
+  });
+</script>
 <body>
+    <div class="app-shell">
+        <header class="chat-header">
+            <div class="avatar-container" id="avatar-container">
+                <div class="avatar"><img id="rep-avatar" src="https://i.postimg.cc/Fs3pXm2c/1.png" alt="נציג"></div>
+                <div class="avatar-menu" id="avatar-menu">
+                    <button id="tutorial-btn">הדרכה</button>
+                    <button id="logout-btn">התנתק</button>
+                </div>
+            </div>
+            <div class="header-info">
+                <h1 id="rep-name">ראמי (עוזר אישי)</h1>
+                <p>זמין 24/7 לשירותך</p>
+            </div>
+        </header>
 
-    <!-- Header & Floating Search Icon -->
-    <header>
-        <div class="logo">ח.סבן - אזור אישי</div>
-        <div class="header-actions">
-            <!-- New Guide Button -->
-            <button id="guide-btn" class="btn btn-secondary" style="padding: 6px 10px;">
-                <i class="fas fa-book"></i> הדרכה
+        <main class="chat-canvas" id="chat-canvas"></main>
+
+        <footer class="chat-footer">
+            <button class="footer-btn" id="send-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576 6.636 10.07Zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/></svg>
             </button>
-            <!-- Search Icon (Initially hidden, floats when chat search is active) -->
-            <button id="search-float-icon" style="display: none;"><i class="fas fa-search"></i></button>
-            <!-- Logout Button -->
-            <button id="logout-btn" class="btn btn-secondary" onclick="logOut()">
-                <i class="fas fa-sign-out-alt"></i> התנתק
+            <textarea id="message-input" placeholder="הקלד או הדבק רשימה..." rows="1"></textarea>
+            <button class="footer-btn" id="attach-btn" title="צרף תמונה">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
             </button>
-        </div>
-    </header>
-
-    <main id="app-main">
-        <!-- Loader Screen -->
-        <div id="loading-screen" class="page active" style="text-align: center; padding-top: 100px;">
-            <i class="fas fa-spinner fa-spin fa-3x" style="color: var(--primary-color);"></i>
-            <h2>טוען נתונים...</h2>
-            <p>אנא המתן.</p>
-        </div>
-
-        <!-- Dashboard: Container Orders (Default Home) -->
-        <section id="page-containers" class="page">
-            <h2><i class="fas fa-dumpster-fire"></i> הזמנות מכולות פעילות</h2>
-            <p>כאן תוכל לצפות בסטטוס המכולות הנוכחיות שלך ולשלוח בקשות פינוי/החלפה.</p>
-            <div id="activeContainersList">
-                <div class="card">
-                    <h3>מכולה #1234 - עץ</h3>
-                    <p class="status-badge active">באתר</p>
-                    <div class="map-container" id="map1234"></div>
-                    <div class="flex-row" style="margin-top: 10px;">
-                        <button class="btn btn-secondary" onclick="showToast('בקשת החלפה נשלחה עבור 1234', 'success')"><i class="fas fa-sync-alt"></i> בקשת החלפה</button>
-                        <button class="btn" onclick="showToast('בקשת פינוי נשלחה עבור 1234', 'success')"><i class="fas fa-trash-alt"></i> בקשת פינוי</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card eta-card" id="etaCard">
-                <h3>צפי הגעה קרוב 🚚</h3>
-                <p>מכולה #5678 (פסולת בניין) בדרך אליך! **צפי הגעה: 14:30**</p>
-                <div class="eta-road-container">
-                    <div class="eta-road">
-                        <span class="eta-truck">🚛</span>
-                    </div>
-                </div>
-            </div>
-            
-            <button class="btn btn-secondary w-full" style="margin-top: 20px;" onclick="navigateTo('page-materials')">
-                <i class="fas fa-plus-circle"></i> הזמנת חומרים חדשה
-            </button>
-        </section>
-
-        <!-- Materials Order Form -->
-        <section id="page-materials" class="page">
-            <h2><i class="fas fa-boxes"></i> הזמנת חומרי בניין (מודול מפוצל לוגית)</h2>
-            <div class="card">
-                <form id="materialsOrderForm">
-                    <div id="step-1" class="form-step">
-                        <h3>שלב 1: פרטי אספקה</h3>
-                        <div class="form-group">
-                            <label for="addressInput">כתובת אספקה</label>
-                            <input type="text" id="addressInput" required placeholder="רחוב, מספר, עיר">
-                        </div>
-                        <div class="form-group">
-                            <label for="dateInput">תאריך אספקה מבוקש</label>
-                            <input type="date" id="dateInput" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="contactInput">איש קשר באתר</label>
-                            <input type="text" id="contactInput" required placeholder="שם ומספר טלפון">
-                        </div>
-                    </div>
-
-                    <div id="step-2" class="form-step" style="display: none;">
-                        <h3>שלב 2: בחירת מוצרים</h3>
-                        <div class="form-group">
-                            <label for="productSearch">חפש מוצר / פריט (לדוגמה: מלט, בלוקים)</label>
-                            <input type="text" id="productSearch" placeholder="הקלד לחיפוש מהיר...">
-                            <div id="productSearchResults" class="card" style="display: none; padding: 0.5rem; max-height: 150px; overflow-y: auto;"></div>
-                        </div>
-                        
-                        <h4>רשימת הזמנה נוכחית:</h4>
-                        <div id="orderItemsList">
-                            <p class="text-center" style="color: #94a3b8;">ההזמנה ריקה.</p>
-                        </div>
-                    </div>
-
-                    <div id="step-3" class="form-step" style="display: none;">
-                        <h3>שלב 3: סיכום ואישור</h3>
-                        <div id="summaryContent"></div>
-                        <p class="text-center" style="font-weight: bold; color: #ef4444; margin-top: 1rem;">באישור ההזמנה, הנך מאשר את תנאי השירות והתשלום.</p>
-                    </div>
-
-                    <div class="flex-row justify-between" style="margin-top: 1rem;">
-                        <button type="button" id="formBackBtn" class="btn btn-secondary" style="display: none;"><i class="fas fa-arrow-right"></i> חזור</button>
-                        <button type="submit" id="formNextBtn" class="btn" style="flex-grow: 1;"><i class="fas fa-arrow-left"></i> המשך לשלב הבא</button>
-                    </div>
-                </form>
-            </div>
-        </section>
-
-        <!-- Chat / Messaging System -->
-        <section id="page-chat" class="page">
-            <div class="card" style="padding: 0;">
-                <!-- Updated Chat Header -->
-                <div class="chat-header">
-                    <i class="fab fa-whatsapp"></i>
-                    <h3>שליחת הזמנה למחלקת הזמנות</h3>
-                </div>
-
-                <!-- Message List -->
-                <div class="message-list" id="messageList">
-                    <!-- Messages will be injected here -->
-                    <div class="message-item system">
-                        <span class="message-number">1</span>
-                        ברוכים הבאים לצ'אט! כאן תוכלו לשלוח בקשות ועדכונים למחלקת ההזמנות.
-                        <span class="message-status">✅</span>
-                    </div>
-                    <div class="message-item user">
-                        <span class="message-number">2</span>
-                        שלום, מתי תגיע המכולה שלי לאתר?
-                        <span class="message-status">📦 נשלח: 10:00</span>
-                    </div>
-                </div>
-
-                <!-- Typing Indicator -->
-                <div class="typing-indicator" id="typingIndicator">
-                    <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
-                </div>
-
-                <!-- Chat Input Area (Wider) -->
-                <div class="chat-input-area">
-                    <div class="form-group">
-                        <label for="templateSelect">תבניות הודעות מהירות:</label>
-                        <select id="templateSelect">
-                            <option value="">בחר שאלה מוכנה...</option>
-                            <option value="ETA_DRIVER">מה צפי הגעה לנהג?</option>
-                            <option value="ORDER_APPROVAL">האם ההזמנה אושרה?</option>
-                            <option value="ADD_ITEMS">אפשר להוסיף פריטים להזמנה?</option>
-                            <option value="NEXT_CONTAINER_STATUS">מתי תפונה המכולה מהאתר?</option>
-                        </select>
-                    </div>
-
-                    <div class="input-row">
-                        <textarea id="chatInput" rows="2" placeholder="הקלד את הודעתך כאן..."></textarea>
-                        <button id="sendMessageBtn" class="btn" style="width: 100px; height: 50px;">
-                            <i class="fas fa-paper-plane"></i> שלח
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
+            <input type="file" id="file-input" accept="image/*" style="display:none;">
+        </footer>
+        <div id="spinner-overlay"><div class="spinner"></div><span id="spinner-text"></span></div>
         
-        <!-- History Page -->
-        <section id="page-history" class="page">
-            <h2><i class="fas fa-history"></i> היסטוריית הזמנות</h2>
-            <div class="form-group">
-                <label for="projectFilter">סינון לפי פרויקט:</label>
-                <select id="projectFilter">
-                    <option value="all">כל הפרויקטים</option>
-                    <!-- Options populated by JS -->
-                </select>
+        <div class="tutorial-overlay" id="tutorial-overlay">
+            <div class="tutorial-header">
+                <button id="close-tutorial-btn">&times; סגור</button>
+                <h2>מדריך שימוש מהיר</h2>
             </div>
-            <div id="historyList">
-                <p class="text-center" style="color: #94a3b8;">לא נמצאו הזמנות קודמות לפרויקט זה.</p>
-            </div>
-        </section>
-
-        <!-- New: Guide Page (Tutorial) -->
-        <section id="page-guide" class="page">
-            <h2><i class="fas fa-book-open"></i> מדריך שימוש באפליקציה</h2>
-            <p>המדריך המלא שיעזור לך להפיק את המקסימום מהאפליקציה.</p>
-            
-            <!-- Notification Button -->
-            <button id="enableNotificationsBtn" class="btn" style="margin-bottom: 20px; width: 100%;">
-                <i class="fas fa-bell"></i> אפשר התראות
-            </button>
-
-            <div class="accordion" id="guideAccordion">
-                <!-- Item 1: New Order -->
-                <div class="accordion-item" id="guide-item-1">
-                    <div class="accordion-header">
-                        איך מבצעים הזמנה חדשה?
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                    <div class="accordion-content">
-                        <div class="content-inner">
-                            <p>כדי לבצע הזמנה חדשה (מכולה או חומרי בניין):</p>
-                            <ol>
-                                <li>לחץ על לשונית **'הזמנה'** בתפריט התחתון.</li>
-                                <li>בחר בין "הזמנת מכולה" (בדף הראשי) לבין "הזמנת חומרים" (מהכפתור הירוק).</li>
-                                <li>מלא את 3 השלבים בטופס (פרטים, מוצרים, סיכום).</li>
-                            </ol>
-                            <!-- Placeholder for Image -->
-                            <img src="https://placehold.co/400x150/e0f2fe/0ea5e9?text=צילום+מסך+הזמנה+חדשה" alt="
-
-[Image of New Order Screen]
-">
-                            <div class="guide-actions">
-                                <button class="btn btn-secondary guide-try-btn" data-target="page-materials">
-                                    <i class="fas fa-arrow-left"></i> נסה עכשיו
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+            <div class="tutorial-content">
+                <div class="tutorial-card">
+                    <h3>איך שולחים הזמנה?</h3>
+                    <p>פשוט כתבו או הדביקו רשימת מוצרים בתיבת הטקסט למטה. אני אנתח אותה אוטומטית ואכין לכם טיוטה לאישור.</p>
                 </div>
-
-                <!-- Item 2: Send Message -->
-                <div class="accordion-item" id="guide-item-2">
-                    <div class="accordion-header">
-                        איך שולחים הודעה למחלקת הזמנות?
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                    <div class="accordion-content">
-                        <div class="content-inner">
-                            <p>לשליחת עדכונים או שאלות מהירות, השתמש בצ'אט המהיר:</p>
-                            <ol>
-                                <li>לחץ על לשונית **'צ'אט'** בתפריט התחתון.</li>
-                                <li>בחר תבנית הודעה מוכנה לחיסכון בזמן, או הקלד הודעה חופשית.</li>
-                                <li>המערכת תחשב אוטומטית פרטים רלוונטיים (כגון היסטוריית מכולות) לפני השליחה.</li>
-                            </ol>
-                            <img src="https://placehold.co/400x150/e0f2fe/0ea5e9?text=צילום+מסך+מסך+צ'אט" alt="">
-                            <div class="guide-actions">
-                                <button class="btn btn-secondary guide-try-btn" data-target="page-chat">
-                                    <i class="fas fa-arrow-left"></i> נסה עכשיו
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                 <div class="tutorial-card tutorial-question" data-answer="answer-1">
+                    שאלה לדוגמה: "מה צפי ההגעה של הזמנה 1234?"
+                    <div class="tutorial-answer" id="answer-1">מיד בודק לך צפי הגעה מול מחלקת המשלוחים. אחזור אליך עם תשובה מדויקת בדקות הקרובות.</div>
                 </div>
-
-                <!-- Item 3: Check Status -->
-                <div class="accordion-item" id="guide-item-3">
-                    <div class="accordion-header">
-                        איך צופים בסטטוס הזמנה?
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                    <div class="accordion-content">
-                        <div class="content-inner">
-                            <p>בכרטיס ה-**Dashboard** (עמוד הבית) ניתן לראות צפי הגעה (ETA) מעודכן. היסטוריית הזמנות מלאה נמצאת בלשונית **'היסטוריה'**.</p>
-                            <div class="guide-actions">
-                                <button class="btn btn-secondary guide-try-btn" data-target="page-containers">
-                                    <i class="fas fa-arrow-left"></i> נסה עכשיו (דאשבורד)
-                                </button>
-                                <button class="btn btn-secondary guide-try-btn" data-target="page-history">
-                                    <i class="fas fa-arrow-left"></i> נסה עכשיו (היסטוריה)
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                 <div class="tutorial-card tutorial-question" data-answer="answer-2">
+                    שאלה לדוגמה: "כמה בלוק 10 הזמנתי בשבוע שעבר?"
+                    <div class="tutorial-answer" id="answer-2">בשבוע האחרון הזמנת 47 יחידות של בלוק 10. תרצה להוסיף להזמנה או לשכפל?</div>
+                </div>
+                 <div class="tutorial-card tutorial-question" data-answer="answer-3">
+                    שאלה לדוגמה: "מה שעות הפעילות שלכם?"
+                    <div class="tutorial-answer" id="answer-3">שעות הפעילות שלנו הן: ימים א'-ה' 07:00-17:00, יום ו' 07:00-13:00.</div>
                 </div>
             </div>
-        </section>
-        
-    </main>
-
-    <!-- Welcome Modal -->
-    <div id="welcome-modal" class="modal-overlay">
-        <div class="modal-content">
-            <h3 id="welcome-title" style="color: var(--primary-color);">...</h3>
-            <p id="welcome-text">...</p>
-            <button class="btn" onclick="closeModal('welcome-modal')">הבנתי, שנתחיל! <i class="fas fa-check"></i></button>
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div id="toast" style="position: fixed; top: 70px; right: 20px; background-color: #333; color: white; padding: 10px 15px; border-radius: 8px; z-index: 300; display: none; opacity: 0; transition: opacity 0.5s;"></div>
-
-    <!-- Footer Navigation -->
-    <nav id="footer-nav">
-        <button data-page="page-containers" class="active"><i class="fas fa-home fa-lg"></i> דאשבורד</button>
-        <button data-page="page-materials"><i class="fas fa-box-open fa-lg"></i> הזמנה</button>
-        <button data-page="page-chat"><i class="fab fa-whatsapp fa-lg"></i> צ'אט</button>
-        <button data-page="page-history"><i class="fas fa-history fa-lg"></i> היסטוריה</button>
-    </nav>
-
-    <!-- Leaflet JS - FIX: Removed integrity attribute to solve SRI error -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <script type="module">
-        // Global Constants and API Setup
-        const API_URL = 'https://script.google.com/macros/s/AKfycbx9w_FY22RepDo13_FyMwIJ-qNSVxONNjGLDXp0Rwaq8dzi7m134Q7j9bTjUktkYQ30/exec';
-        
-        // Mock Data (to be replaced by API calls)
-        const MOCK_CLIENT_DATA = {
-            id: 'CLIENT-HS789',
-            name: 'ראמי',
-            company: 'פרויקטים בע"מ',
-            phone: '052-1234567',
-            activeContainers: [
-                { id: '1234', type: 'עץ', location: 'הגפן 5, נתניה', lat: 32.3328, lng: 34.8587, status: 'באתר' },
-                { id: '5678', type: 'פסולת בניין', location: 'הדקל 12, תל אביב', lat: 32.0853, lng: 34.7818, status: 'בדרך', eta: '14:30' },
-            ],
-            history: [
-                { id: 'H001', date: '2025-05-10', type: 'מכולה (אדמה)', status: 'סופק' },
-                { id: 'H002', date: '2025-06-01', type: 'חומרים (מלט, חול)', status: 'סופק' },
-            ],
-            chatHistory: [
-                { sender: 'system', text: 'ברוכים הבאים! איך נוכל לעזור היום?' },
-                { sender: 'user', text: 'היי, המכולה שביקשתי לא הגיעה עדיין.' },
-            ],
-            materialsCatalog: [
-                { id: 1, name: 'מלט 50 ק"ג', unit: 'שק', price: 25 },
-                { id: 2, name: 'חול 0', unit: 'קוב', price: 120 },
-                { id: 3, name: 'בלוק איטונג 10 ס"מ', unit: 'יחידה', price: 5 },
-                { id: 4, name: 'טיט מוכן', unit: 'שק', price: 18 },
-                { id: 5, name: 'חצץ 3/4', unit: 'קוב', price: 100 },
-            ]
-        };
-
-        const GREETINGS = {
-            morning: { emoji: '🌞', title: 'בוקר טוב', text: 'יום מוצלח לפניך!' }, // 05:00 - 11:59
-            noon: { emoji: '☕', title: 'צהריים טובים', text: 'מאחלים שתהיה שעה יפה!' }, // 12:00 - 17:59
-            evening: { emoji: '🌙', title: 'ערב טוב', text: 'תודה שבחרת בנו גם היום!' }, // 18:00 - 04:59
-        };
-
-        // Application State
-        const clientState = {
-            currentPage: 'page-containers',
-            clientData: MOCK_CLIENT_DATA,
-            isLoggedIn: true,
-            materialOrder: {
-                step: 1,
-                items: [],
-                deliveryDetails: {}
-            },
-            chatMessages: MOCK_CLIENT_DATA.chatHistory,
-        };
-
-        // DOM Element Cache
-        const dom = {};
-        
-        // --- Utility Functions ---
-
-        // showToast and closeModal moved to global <script> block above to fix ReferenceError.
-
-        /** Checks time and shows a personalized welcome modal. */
-        function checkTimeAndGreet() {
-            const now = new Date();
-            const hour = now.getHours();
-            let timeKey;
-
-            if (hour >= 5 && hour < 12) {
-                timeKey = 'morning';
-            } else if (hour >= 12 && hour < 18) {
-                timeKey = 'noon';
-            } else {
-                timeKey = 'evening';
-            }
-
-            const greeting = GREETINGS[timeKey];
-            const name = clientState.clientData.name || 'לקוח';
-            
-            dom.welcomeTitle.innerHTML = `${greeting.title} ${name} ${greeting.emoji}`;
-            dom.welcomeText.textContent = greeting.text;
-
-            // Show modal only once per session
-            if (sessionStorage.getItem('greeted') !== 'true') {
-                showModal('welcome-modal'); // Using global showModal
-                sessionStorage.setItem('greeted', 'true');
-            }
-        }
-
-        // Must be defined globally outside the module for onclick attribute in HTML
-        function showModal(id) {
-            document.getElementById(id)?.classList.add('active');
-        }
-
-        
-        // --- Navigation and Page Rendering ---
-
-        /** Navigates between main application pages. */
-        function navigateTo(pageId, pushState = true) {
-            if (clientState.currentPage === pageId) return;
-
-            // Update page display
-            document.querySelectorAll('.page').forEach(page => {
-                page.classList.remove('active');
-            });
-            document.getElementById(pageId).classList.add('active');
-            
-            // Update footer navigation buttons
-            document.querySelectorAll('#footer-nav button').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.dataset.page === pageId) {
-                    btn.classList.add('active');
-                }
-            });
-
-            clientState.currentPage = pageId;
-            updatePageContent(pageId);
-
-            if (pushState) {
-                window.history.pushState({ page: pageId }, '', `#${pageId}`);
-            }
-            
-            // Hide guide/chat specific elements when navigating away
-            if (pageId !== 'page-chat') {
-                dom.searchFloatIcon.style.display = 'none';
-            }
-        }
-        
-        /** Renders content specific to the active page. */
-        function updatePageContent(pageId) {
-            switch (pageId) {
-                case 'page-containers':
-                    renderActiveContainers();
-                    break;
-                case 'page-materials':
-                    updateFormView(); // Update form step view
-                    break;
-                case 'page-chat':
-                    renderChatMessages();
-                    break;
-                case 'page-history':
-                    renderHistory();
-                    break;
-                case 'page-guide':
-                    // Content is mostly static HTML, but we can set up event listeners here
-                    break;
-            }
-        }
-
-        // --- Container Page Logic ---
-        
-        /** Renders the list of active containers with map and actions. */
-        function renderActiveContainers() {
-            const containers = clientState.clientData.activeContainers;
-            const list = dom.activeContainersList;
-            list.innerHTML = '';
-
-            containers.forEach(c => {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <h3>מכולה #${c.id} - ${c.type}</h3>
-                    <p><span class="status-badge active">${c.status}</span> | מיקום: ${c.location}</p>
-                    <div class="map-container" id="map${c.id}"></div>
-                    <div class="flex-row" style="margin-top: 10px;">
-                        <button class="btn btn-secondary" onclick="showToast('בקשת החלפה נשלחה עבור ${c.id}', 'success')"><i class="fas fa-sync-alt"></i> בקשת החלפה</button>
-                        <button class="btn" onclick="showToast('בקשת פינוי נשלחה עבור ${c.id}', 'success')"><i class="fas fa-trash-alt"></i> בקשת פינוי</button>
-                    </div>
-                `;
-                list.appendChild(card);
-                
-                // Initialize map
-                setTimeout(() => { // Timeout needed to ensure container has rendered
-                    const map = L.map(`map${c.id}`).setView([c.lat, c.lng], 14);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-                    L.marker([c.lat, c.lng]).addTo(map).bindPopup(`<b>מכולה #${c.id}</b>`).openPopup();
-                }, 50);
-
-                // Update ETA card progress (Mock)
-                if (c.status === 'בדרך' && c.eta) {
-                    dom.etaCard.style.display = 'block';
-                    const progress = Math.min(Math.floor(Math.random() * 100), 85); // 0 to 85%
-                    dom.etaTruck.style.left = `${progress}%`;
-                    dom.etaCard.querySelector('p').innerHTML = `מכולה #${c.id} (${c.type}) בדרך אליך! **צפי הגעה: ${c.eta}**`;
-                } else {
-                    dom.etaCard.style.display = 'none';
-                }
-            });
-        }
-        
-        // --- Materials Order Form Logic ---
-        
-        /** Updates the form visibility based on the current step. */
-        function updateFormView() {
-            const step = clientState.materialOrder.step;
-            const totalSteps = 3;
-
-            document.querySelectorAll('.form-step').forEach(el => {
-                el.style.display = 'none';
-            });
-            document.getElementById(`step-${step}`).style.display = 'block';
-
-            dom.formBackBtn.style.display = step > 1 ? 'inline-flex' : 'none';
-            
-            if (step < totalSteps) {
-                dom.formNextBtn.textContent = `המשך לשלב הבא (${step}/${totalSteps})`;
-                dom.formNextBtn.innerHTML = `<i class="fas fa-arrow-left"></i> המשך לשלב הבא (${step}/${totalSteps})`;
-                dom.formNextBtn.type = 'submit';
-            } else {
-                dom.formNextBtn.textContent = 'שלח הזמנה לאישור';
-                dom.formNextBtn.innerHTML = `<i class="fas fa-check-circle"></i> שלח הזמנה לאישור`;
-                dom.formNextBtn.type = 'submit';
-                renderSummaryStep();
-            }
-        }
-
-        /** Navigates forward/backward in the multi-step form. */
-        function navigateForm(direction) {
-            let nextStep = clientState.materialOrder.step + direction;
-            if (nextStep >= 1 && nextStep <= 3) {
-                clientState.materialOrder.step = nextStep;
-                updateFormView();
-            }
-        }
-
-        /** Handles product search and displays results. */
-        function handleProductSearch() {
-            const query = dom.productSearch.value.toLowerCase();
-            const resultsDiv = dom.productSearchResults;
-            resultsDiv.innerHTML = '';
-            
-            if (query.length < 2) {
-                resultsDiv.style.display = 'none';
-                return;
-            }
-
-            const results = clientState.clientData.materialsCatalog.filter(item => 
-                item.name.toLowerCase().includes(query)
-            );
-
-            if (results.length > 0) {
-                results.forEach(item => {
-                    const btn = document.createElement('button');
-                    btn.className = 'btn btn-secondary';
-                    btn.style.margin = '5px';
-                    btn.textContent = `+ ${item.name} (${item.unit})`;
-                    btn.onclick = () => addItemToOrder(item);
-                    resultsDiv.appendChild(btn);
-                });
-                resultsDiv.style.display = 'block';
-            } else {
-                resultsDiv.innerHTML = `<p style="margin: 0;">לא נמצאו תוצאות. ניתן להקליד טקסט חופשי בהמשך.</p>`;
-                resultsDiv.style.display = 'block';
-            }
-        }
-
-        /** Handles Enter key during product search to add free text item */
-        function handleProductSearchKeydown(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const query = dom.productSearch.value.trim();
-                if (query) {
-                    addItemToOrder({ 
-                        id: Date.now(), 
-                        name: query, 
-                        unit: 'יח\'', 
-                        price: 0, // Price is 0 for free text/non-catalog items
-                        isFreeText: true
-                    });
-                    dom.productSearch.value = '';
-                    dom.productSearchResults.style.display = 'none';
-                }
-            }
-        }
-
-        /** Adds an item to the order list. */
-        function addItemToOrder(item) {
-            const existingItem = clientState.materialOrder.items.find(i => i.id === item.id && !item.isFreeText);
-            
-            if (existingItem) {
-                existingItem.quantity = (existingItem.quantity || 1) + 1;
-                showToast(`כמות עודכנה ל-${existingItem.quantity} עבור ${existingItem.name}`, 'info');
-            } else {
-                clientState.materialOrder.items.push({ ...item, quantity: 1 });
-                showToast(`הפריט ${item.name} נוסף להזמנה`, 'success');
-            }
-            renderOrderItems();
-        }
-
-        /** Renders the list of items in step 2. */
-        function renderOrderItems() {
-            const list = dom.orderItemsList;
-            list.innerHTML = '';
-
-            if (clientState.materialOrder.items.length === 0) {
-                list.innerHTML = `<p class="text-center" style="color: #94a3b8;">ההזמנה ריקה.</p>`;
-                return;
-            }
-
-            clientState.materialOrder.items.forEach((item, index) => {
-                const itemEl = document.createElement('div');
-                itemEl.className = 'card';
-                itemEl.style.padding = '10px';
-                itemEl.style.marginBottom = '5px';
-                
-                itemEl.innerHTML = `
-                    <div class="flex-row justify-between align-center">
-                        <div>
-                            <strong>${item.name}</strong> 
-                            ${item.isFreeText ? `<span class="status-badge pending" style="font-size: 0.6rem;">טקסט חופשי</span>` : ''}
-                            <div style="font-size: 0.8rem; color: #64748b;">יחידה: ${item.unit}</div>
-                        </div>
-                        <div class="flex-row align-center">
-                            <input type="number" data-index="${index}" data-action="update-quantity" value="${item.quantity}" min="1" style="width: 70px; padding: 5px; text-align: center;">
-                            <button class="btn btn-secondary" style="margin-right: 5px; padding: 5px;" onclick="window.removeItemFromOrder(${index})">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                list.appendChild(itemEl);
-            });
-        }
-        
-        /** Updates item quantity from input change. */
-        window.updateItemQuantity = (e) => {
-            const index = e.target.dataset.index;
-            const newQuantity = parseInt(e.target.value);
-            if (!isNaN(newQuantity) && newQuantity > 0) {
-                clientState.materialOrder.items[index].quantity = newQuantity;
-            } else {
-                e.target.value = clientState.materialOrder.items[index].quantity; // Revert to old value
-            }
-        };
-
-        /** Removes an item from the order list. (Globalized for inline HTML handler) */
-        window.removeItemFromOrder = (index) => {
-            clientState.materialOrder.items.splice(index, 1);
-            renderOrderItems();
-        };
-
-        /** Renders the final summary step (Step 3). */
-        function renderSummaryStep() {
-            const details = clientState.materialOrder.deliveryDetails;
-            const items = clientState.materialOrder.items;
-            let totalItems = 0;
-            items.forEach(item => totalItems += item.quantity);
-
-            let html = `
-                <h4>פרטי אספקה:</h4>
-                <ul>
-                    <li><strong>כתובת:</strong> ${details.address}</li>
-                    <li><strong>תאריך:</strong> ${details.date}</li>
-                    <li><strong>איש קשר:</strong> ${details.contact}</li>
-                </ul>
-                <h4>פריטים להזמנה (${items.length} סוגי פריטים, סה"כ ${totalItems} יחידות):</h4>
-            `;
-
-            if (items.length > 0) {
-                html += '<ul>';
-                items.forEach(item => {
-                    html += `<li>${item.name} (${item.unit}): <strong>${item.quantity}</strong> יחידות</li>`;
-                });
-                html += '</ul>';
-            } else {
-                html += '<p style="color: #ef4444; font-weight: bold;">⚠️ לא נבחרו פריטים! חזור לשלב 2.</p>';
-                dom.formNextBtn.disabled = true;
-            }
-            dom.summaryContent.innerHTML = html;
-        }
-
-        /** Submits the materials order (Mock API call). */
-        function submitMaterialsOrder() {
-            const orderData = {
-                client: clientState.clientData.id,
-                date: new Date().toISOString(),
-                details: clientState.materialOrder.deliveryDetails,
-                items: clientState.materialOrder.items,
-            };
-            
-            // Simulating API call
-            console.log("Submitting Order:", orderData);
-            showToast('✅ הזמנת חומרים נשלחה בהצלחה!', 'success');
-            
-            // After successful submission, reset and navigate
-            clientState.materialOrder.items = [];
-            clientState.materialOrder.deliveryDetails = {};
-            clientState.materialOrder.step = 1;
-            navigateTo('page-containers', false);
-        }
-
-        /** Handles form submission (Next button logic). */
-        function handleFormSubmit(e) {
-            e.preventDefault();
-            const step = clientState.materialOrder.step;
-            const form = dom.materialsOrderForm;
-            
-            if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-            }
-
-            if (step === 1) {
-                // Save Step 1 data and proceed
-                clientState.materialOrder.deliveryDetails = {
-                    address: dom.addressInput.value,
-                    date: dom.dateInput.value,
-                    contact: dom.contactInput.value,
-                };
-                navigateForm(1);
-            } else if (step === 2) {
-                if (clientState.materialOrder.items.length === 0) {
-                    showToast('אנא הוסף פריטים להזמנה לפני המעבר לשלב הסיכום.', 'error');
-                    return;
-                }
-                navigateForm(1);
-            } else if (step === 3) {
-                // Final submission
-                submitMaterialsOrder();
-            }
-        }
-        
-        // --- Guide/Tutorial Logic ---
-
-        /** Initializes the Guide page event listeners (Accordion, Try Now, Notifications). */
-        function initGuidePage() {
-            // Accordion Logic
-            document.querySelectorAll('.accordion-header').forEach(header => {
-                header.addEventListener('click', () => {
-                    const item = header.closest('.accordion-item');
-                    const content = item.querySelector('.accordion-content');
-                    const isOpen = item.classList.contains('open');
-
-                    // Close all other open items
-                    document.querySelectorAll('.accordion-item.open').forEach(openItem => {
-                        if (openItem !== item) {
-                            openItem.classList.remove('open');
-                            openItem.querySelector('.accordion-content').style.maxHeight = null;
-                        }
-                    });
-
-                    // Toggle current item
-                    if (!isOpen) {
-                        item.classList.add('open');
-                        content.style.maxHeight = content.scrollHeight + "px";
-                    } else {
-                        item.classList.remove('open');
-                        content.style.maxHeight = null;
-                    }
-                });
-            });
-
-            // Try Now Buttons
-            document.querySelectorAll('.guide-try-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const targetPage = e.currentTarget.dataset.target;
-                    navigateTo(targetPage);
-                    showToast(`נווטת לעמוד ${targetPage.replace('page-', '')} - בהצלחה!`, 'info');
-                });
-            });
-
-            // Enable Notifications Button
-            dom.enableNotificationsBtn.addEventListener('click', enableNotifications);
-        }
-        
-        /** Requests notification permissions via OneSignal. */
-        function enableNotifications() {
-            window.OneSignalDeferred.push(function(OneSignal) {
-                // FIX: Use OneSignal.User for subscription
-                if (OneSignal.User && OneSignal.User.pushSubscription) {
-                    OneSignal.User.pushSubscription.optIn()
-                        .then(() => {
-                            showToast('✅ בקשת ההתראות נשלחה בהצלחה!', 'success');
-                        })
-                        .catch(error => {
-                            console.error("Error subscribing to push:", error);
-                            showToast('⚠️ לא ניתן לאפשר התראות. ודא שלא חסמת אותן בהגדרות הדפדפן.', 'error');
-                        });
-                } else {
-                     showToast('⚠️ שירות ההתראות עדיין לא נטען במלואו.', 'error');
-                }
-            });
-        }
-        
-        // --- Chat System Logic ---
-
-        /** Renders the current chat history. */
-        function renderChatMessages() {
-            const list = dom.messageList;
-            list.innerHTML = '';
-            
-            clientState.chatMessages.forEach((msg, index) => {
-                const itemEl = document.createElement('div');
-                itemEl.className = `message-item ${msg.sender}`;
-                itemEl.innerHTML = `
-                    <span class="message-number">${index + 1}</span>
-                    <span class="message-content">${msg.text}</span>
-                    <span class="message-status">${msg.status || (msg.sender === 'user' ? '📦 נשלח: 10:00' : '✅')}</span>
-                `;
-                list.appendChild(itemEl);
-            });
-            
-            // Scroll to bottom
-            list.scrollTop = list.scrollHeight;
-        }
-
-        /** Handles chat template selection. */
-        function handleTemplateSelection() {
-            const template = dom.templateSelect.value;
-            if (!template) return;
-            
-            const lastMessage = clientState.chatMessages.findLast(m => m.sender === 'user');
-            
-            // Simulate typing indicator
-            dom.typingIndicator.classList.add('active');
-            
-            setTimeout(() => {
-                dom.typingIndicator.classList.remove('active');
-                let responseText = '';
-                let status = '✅';
-                
-                switch (template) {
-                    case 'ETA_DRIVER':
-                        const activeContainer = clientState.clientData.activeContainers.find(c => c.status === 'בדרך');
-                        if (activeContainer) {
-                            responseText = `נהג: אלי כהן | צפי הגעה למכולה #${activeContainer.id}: ${activeContainer.eta}.`;
-                            status = '🚚 נהג פעיל';
-                        } else {
-                            responseText = 'אין כרגע מכולה עם סטטוס "בדרך". אנא בצע הזמנה או בקשת החלפה.';
-                        }
-                        break;
-                    case 'ORDER_APPROVAL':
-                        responseText = 'ההזמנה טרם אושרה. ברגע שיהיה עדכון תקבל התראה כאן.';
-                        break;
-                    case 'ADD_ITEMS':
-                        responseText = 'ניתן להוסיף פריטים להזמנה (חומרים) עד שעה לפני מועד האספקה המאושר.';
-                        break;
-                    case 'NEXT_CONTAINER_STATUS':
-                        const containerToCollect = clientState.clientData.activeContainers.find(c => c.status === 'באתר');
-                        if (containerToCollect) {
-                            responseText = `המכולה #${containerToCollect.id} (באתר) נמצאת בתור לפינוי. הפינוי צפוי בתוך 24 שעות.`;
-                        } else {
-                            responseText = 'אין מכולות ממתינות לפינוי.';
-                        }
-                        break;
-                    default:
-                        responseText = 'תבנית לא מזוהה.';
-                }
-
-                clientState.chatMessages.push({ sender: 'system', text: responseText, status });
-                renderChatMessages();
-                dom.templateSelect.value = ''; // Reset select
-            }, 1500); // Simulate network/system response time
-        }
-
-        /** Simulates pre-send automation and then sends the message. */
-        function simulatePreSendAutomation(message) {
-            const containerHistory = clientState.clientData.activeContainers.length > 0 ? 
-                `ישנן ${clientState.clientData.activeContainers.length} מכולות פעילות באתר. ` : 'אין מכולות פעילות. ';
-            
-            const totalItemsInDraft = clientState.materialOrder.items.reduce((acc, item) => acc + item.quantity, 0);
-            const materialsDraftStatus = totalItemsInDraft > 0 ? 
-                `סה"כ פריטים בטיוטת חומרים: ${totalItemsInDraft}. ` : '';
-
-            const automationText = `\n\n--- חישוב אוטומטי (למערכת) ---\n${containerHistory}${materialsDraftStatus}תוכן מקורי: ${message}`;
-            
-            // Show the user the calculated text before sending (allowing edit)
-            dom.chatInput.value = automationText;
-
-            // Wait for manual edit, then send
-            showToast('בוצע חישוב אוטומטי - לחץ שוב על "שלח" לאישור השליחה.', 'info');
-            dom.sendMessageBtn.onclick = () => {
-                const finalMessage = dom.chatInput.value;
-                // Add to chat history
-                clientState.chatMessages.push({ sender: 'user', text: finalMessage, status: '📦 נשלח: ' + new Date().toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'}) });
-                renderChatMessages();
-                dom.chatInput.value = '';
-                dom.sendMessageBtn.onclick = handleSendMessage; // Restore original handler
-                
-                // Simulate logging to a sheet/API
-                saveMessageToSheet({
-                    client_id: clientState.clientData.id,
-                    timestamp: new Date().toISOString(),
-                    content: finalMessage,
-                });
-            };
-        }
-        
-        /** Simulates saving the message to the backend sheet/DB. */
-        function saveMessageToSheet(data) {
-            console.log("LOGGING CHAT TO BACKEND:", data);
-            // In a real application, this would be a fetch() call to the API_URL with POST method.
-        }
-
-        /** Handles the initial send message click. */
-        function handleSendMessage() {
-            const message = dom.chatInput.value.trim();
-            if (!message) return;
-            
-            simulatePreSendAutomation(message);
-        }
-
-        /** Handles the search bar within the chat page. */
-        function handleChatSearch() {
-            const query = dom.chatSearchInput.value.trim().toLowerCase();
-            const messageContents = document.querySelectorAll('.message-item .message-content');
-            
-            // Remove previous highlights
-            messageContents.forEach(el => {
-                el.innerHTML = el.textContent; // Clears old highlights
-            });
-
-            if (query.length === 0) {
-                return;
-            }
-
-            // Apply new highlights
-            messageContents.forEach(el => {
-                const text = el.textContent;
-                const regex = new RegExp(`(${query})`, 'gi');
-                if (text.match(regex)) {
-                    el.innerHTML = text.replace(regex, '<span class="highlight">$1</span>');
-                }
-            });
-            
-            // Scroll to the first highlighted item (optional, but good UX)
-            const firstHighlight = document.querySelector('.highlight');
-            if (firstHighlight) {
-                firstHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-
-        /** Toggles the visibility of the floating search icon and activates the search bar. */
-        function toggleChatSearch() {
-            const isChatActive = clientState.currentPage === 'page-chat';
-            const isActive = dom.chatSearchInput.style.display === 'block';
-
-            if (isChatActive && !isActive) {
-                // Show floating icon in header
-                dom.searchFloatIcon.style.display = 'block';
-                dom.searchFloatIcon.innerHTML = `<i class="fas fa-search"></i>`;
-                
-                // Clicking the float icon focuses the input
-                dom.searchFloatIcon.onclick = () => {
-                    dom.chatSearchInput.focus();
-                };
-                
-                // Replace regular search input with the one in the header
-                dom.chatSearchInput.style.display = 'none'; // Keep the actual input in place but hidden
-                
-                // Better approach: use a modal search bar for better UX, but for simplicity, 
-                // we'll just implement the logic to highlight the results inside the chat list.
-                // The floating icon will simply be a visual cue that search is available on the page.
-            } else {
-                dom.searchFloatIcon.style.display = 'none';
-            }
-        }
-        
-        // --- History Logic ---
-        
-        function renderHistory() {
-            const list = dom.historyList = document.getElementById('historyList');
-            list.innerHTML = '';
-            
-            clientState.clientData.history.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <h4>${item.type} (${item.date})</h4>
-                    <p>סטטוס: <span class="status-badge history">${item.status}</span></p>
-                    <button class="btn btn-secondary" style="margin-top: 5px;" onclick="showToast('מציג פרטים מלאים על ${item.id}', 'info')">
-                        <i class="fas fa-info-circle"></i> צפה בפרטים
-                    </button>
-                `;
-                list.appendChild(card);
-            });
-        }
-        
-        // --- Main Initialization ---
-        
-        window.logOut = () => {
-            clientState.isLoggedIn = false;
-            document.body.innerHTML = '<div style="padding: 20px; text-align: center;"><h1>התנתקת בהצלחה</h1><p>אנא רענן את הדף להתחברות מחדש.</p></div>';
-            sessionStorage.removeItem('greeted');
-        };
-
-        function initDomCache() {
-            dom.loadingScreen = document.getElementById('loading-screen');
-            dom.appMain = document.getElementById('app-main');
-            dom.footerNav = document.getElementById('footer-nav');
-            dom.toast = document.getElementById('toast');
-            
-            // New Modals/Guide
-            dom.welcomeModal = document.getElementById('welcome-modal');
-            dom.welcomeTitle = document.getElementById('welcome-title');
-            dom.welcomeText = document.getElementById('welcome-text');
-            dom.guideBtn = document.getElementById('guide-btn');
-            dom.enableNotificationsBtn = document.getElementById('enableNotificationsBtn');
-            dom.searchFloatIcon = document.getElementById('search-float-icon');
-
-            // Pages
-            dom.pageContainers = document.getElementById('page-containers');
-            dom.pageMaterials = document.getElementById('page-materials');
-            dom.pageChat = document.getElementById('page-chat');
-            dom.pageHistory = document.getElementById('page-history');
-            dom.activeContainersList = document.getElementById('activeContainersList');
-            dom.etaCard = document.getElementById('etaCard');
-            dom.etaTruck = document.querySelector('.eta-truck');
-
-            // Materials Form
-            dom.materialsOrderForm = document.getElementById('materialsOrderForm');
-            dom.formBackBtn = document.getElementById('formBackBtn');
-            dom.formNextBtn = document.getElementById('formNextBtn');
-            dom.addressInput = document.getElementById('addressInput');
-            dom.dateInput = document.getElementById('dateInput');
-            dom.contactInput = document.getElementById('contactInput');
-            dom.productSearch = document.getElementById('productSearch');
-            dom.productSearchResults = document.getElementById('productSearchResults');
-            dom.orderItemsList = document.getElementById('orderItemsList');
-            dom.summaryContent = document.getElementById('summaryContent');
-
-            // Chat Page
-            dom.messageList = document.getElementById('messageList');
-            dom.typingIndicator = document.getElementById('typingIndicator');
-            dom.chatInput = document.getElementById('chatInput');
-            dom.sendMessageBtn = document.getElementById('sendMessageBtn');
-            dom.templateSelect = document.getElementById('templateSelect');
-            
-            // Chat Search (Injecting the search input into the card for better positioning)
-            const chatHeader = dom.pageChat.querySelector('.chat-header');
-            const searchInput = document.createElement('input');
-            searchInput.type = 'text';
-            searchInput.id = 'chatSearchInput';
-            searchInput.placeholder = 'חפש בתוך הודעות...';
-            searchInput.style.padding = '8px';
-            searchInput.style.border = '1px solid white';
-            searchInput.style.borderRadius = '8px';
-            searchInput.style.flexGrow = '1';
-            searchInput.style.color = 'var(--secondary-color)';
-            searchInput.style.marginTop = '10px';
-            chatHeader.appendChild(searchInput);
-            dom.chatSearchInput = searchInput;
-        }
-
-        function initEventListeners() {
-            // Footer Navigation
-            dom.footerNav.querySelectorAll('button').forEach(button => {
-                button.addEventListener('click', () => navigateTo(button.dataset.page));
-            });
-
-            // Guide Button
-            dom.guideBtn.addEventListener('click', () => navigateTo('page-guide'));
-
-            // Materials Form
-            dom.materialsOrderForm.addEventListener('submit', handleFormSubmit);
-            dom.formBackBtn.addEventListener('click', () => navigateForm(-1));
-            
-            dom.productSearch.addEventListener('input', handleProductSearch);
-            dom.productSearch.addEventListener('keydown', handleProductSearchKeydown);
-
-            // Attach to body since order items are rendered dynamically
-            document.body.addEventListener('change', e => {
-                if (e.target.dataset.action === 'update-quantity') {
-                    window.updateItemQuantity(e);
-                }
-            });
-            
-            // Chat Page
-            dom.templateSelect.addEventListener('change', handleTemplateSelection);
-            dom.sendMessageBtn.addEventListener('click', handleSendMessage);
-            dom.chatSearchInput.addEventListener('input', handleChatSearch);
-            
-            // Listen for page navigation to update search icon visibility
-            window.addEventListener('popstate', (e) => {
-                const page = e.state?.page || 'page-containers';
-                navigateTo(page, false);
-            });
-            
-            // Guide Page Init
-            initGuidePage();
-        }
-
-        async function initApp() {
-            initDomCache();
-            initEventListeners();
-            
-            // 1. Simulate authentication and load data
-            // In a real app, clientData would be fetched from the server based on auth.
-            
-            // 2. OneSignal Integration
-            await setOneSignalExternalId(clientState.clientData.id);
-
-            // 3. Initial Render
-            const initialPage = window.location.hash.substring(1) || 'page-containers';
-            navigateTo(initialPage, false);
-            
-            // 4. Hide loading screen and show app
-            dom.loadingScreen.classList.remove('active');
-            
-            // 5. Show welcome greeting
-            checkTimeAndGreet();
-            
-            // 6. Initial chat rendering
-            renderChatMessages();
-
-            console.log("Application Initialized");
-        }
-        
-        // Start the application after the DOM is fully loaded
+    <script>
         document.addEventListener('DOMContentLoaded', () => {
-            try {
-                initApp();
-            } catch (e) {
-                // Fallback for critical errors
-                document.body.innerHTML = `<div style="padding: 20px; text-align: center;"><h1>אפליקציה נתקלה בשגיאה חמורה</h1><p>נסה לרענן את הדף.</p></div>`
-                console.error("Critical application error:", e);
+            const API_URL = "https://script.google.com/macros/s/AKfycbzbo8jqgN7SBpU5xcARbNxcUwnYZc7ogcvp9XcYMM_lMr_og2mdkjLSA7C7gp0ptLzY/exec";
+
+            const dom = {
+                canvas: document.getElementById('chat-canvas'),
+                input: document.getElementById('message-input'),
+                sendBtn: document.getElementById('send-btn'),
+                attachBtn: document.getElementById('attach-btn'),
+                fileInput: document.getElementById('file-input'),
+                spinner: document.getElementById('spinner-overlay'),
+                spinnerText: document.getElementById('spinner-text'),
+                repName: document.getElementById('rep-name'),
+                repAvatar: document.getElementById('rep-avatar'),
+                avatarContainer: document.getElementById('avatar-container'),
+                avatarMenu: document.getElementById('avatar-menu'),
+                tutorialBtn: document.getElementById('tutorial-btn'),
+                logoutBtn: document.getElementById('logout-btn'),
+                tutorialOverlay: document.getElementById('tutorial-overlay'),
+                closeTutorialBtn: document.getElementById('close-tutorial-btn'),
+            };
+
+            let state = { user: null, chatHistory: [], isBotTyping: false };
+            let orderDraftTimer;
+
+            async function init() {
+                showSpinner("מתחבר...");
+                try {
+                    const identifier = '60120'; // In production, get from login
+                    const response = await apiPost({ action: 'login', identifier });
+                    
+                    if (response.status === 'success') {
+                        state.user = response.user;
+                        updateHeader(response.user);
+                        addMessageToCanvas({ sender: 'bot', text: getGreeting() });
+                    } else throw new Error(response.message);
+                } catch (e) {
+                    addMessageToCanvas({ sender: 'bot', text: 'שגיאה בהתחברות. נסה לרענן.' });
+                } finally {
+                    hideSpinner();
+                    setupEventListeners();
+                }
             }
+            
+            function setupEventListeners() {
+                dom.sendBtn.addEventListener('click', handleUserInput);
+                dom.input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleUserInput(); }
+                });
+                dom.attachBtn.addEventListener('click', () => dom.fileInput.click());
+                dom.fileInput.addEventListener('change', handleFileUpload);
+
+                // Avatar Menu
+                dom.avatarContainer.addEventListener('click', () => dom.avatarMenu.classList.toggle('active'));
+                dom.logoutBtn.addEventListener('click', () => window.close());
+                dom.tutorialBtn.addEventListener('click', () => dom.tutorialOverlay.classList.add('active'));
+                dom.closeTutorialBtn.addEventListener('click', () => dom.tutorialOverlay.classList.remove('active'));
+
+                // Tutorial Questions
+                document.querySelectorAll('.tutorial-question').forEach(q => {
+                    q.addEventListener('click', () => {
+                        const answer = document.getElementById(q.dataset.answer);
+                        answer.style.display = answer.style.display === 'block' ? 'none' : 'block';
+                    });
+                });
+                
+                // Canvas event delegation
+                dom.canvas.addEventListener('click', (e) => {
+                    const button = e.target.closest('button[data-action]');
+                    if (!button) return;
+                    
+                    const action = button.dataset.action;
+                    const messageId = button.closest('.message-bubble').id;
+
+                    if (action === 'confirm-draft') finalizeOrderDraft(messageId);
+                    if (action === 'cancel-draft') cancelOrderDraft(messageId);
+                });
+            }
+
+            function updateHeader(user) {
+                if(!user) return;
+                dom.repName.textContent = user.אווטאר_נציג || "ראמי (עוזר אישי)";
+                dom.repAvatar.src = user.תמונת_פרופיל || "https://i.postimg.cc/Fs3pXm2c/1.png";
+            }
+
+            function getGreeting() {
+                const hour = new Date().getHours();
+                const name = state.user && state.user['שם_לקוח'] ? state.user['שם_לקוח'].split(' ')[0] : 'לקוח';
+                if (hour >= 5 && hour < 12) return `בוקר טוב ${name} ☀️, אני העוזר האישי שלך להזמנות.`;
+                if (hour >= 12 && hour < 18) return `צהריים טובים ${name} 🍽️, איך אפשר לעזור היום?`;
+                if (hour >= 18 && hour < 22) return `ערב טוב ${name} 🌙, כאן לשירותך.`;
+                return `לילה טוב ${name}, מקווה שהכל בסדר. אני כאן אם צריך.`;
+            }
+
+            function handleUserInput() {
+                const text = dom.input.value.trim();
+                if (!text) return;
+                addMessageToCanvas({ sender: 'user', text });
+                dom.input.value = '';
+                processMessage(text);
+            }
+
+            function handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => addMessageToCanvas({ sender: 'user', image: e.target.result });
+                reader.readAsDataURL(file);
+            }
+            
+            async function processMessage(text) {
+                setTyping(true);
+                try {
+                    const response = await apiPost({
+                        action: 'handleClientMessage',
+                        clientId: state.user['מזהה_לקוח'],
+                        text: text
+                    });
+                    setTyping(false);
+
+                    if (response.status === 'success') {
+                        if (response.type === 'orderDraft') {
+                            addMessageWithOrderDraft(response.draft);
+                        } else if (response.newMessages) {
+                            response.newMessages.forEach((msg, i) => {
+                                setTimeout(() => renderServerMessage(msg), i * 600);
+                            });
+                        }
+                    } else { throw new Error(response.message); }
+                } catch (e) {
+                    setTyping(false);
+                    addMessageToCanvas({ sender: 'bot', text: 'הייתה בעיה בתקשורת, נסה שוב.'});
+                }
+            }
+
+            function renderServerMessage(msg) {
+                addMessageToCanvas({
+                    sender: msg.sender === 'user' ? 'user' : 'bot',
+                    text: msg.text,
+                    buttons: msg.buttons,
+                    seen: true,
+                });
+            }
+
+            function addMessageToCanvas(message, animate = true) {
+                const bubble = document.createElement('div');
+                const isUser = message.sender === 'user';
+                bubble.className = `message-bubble ${isUser ? 'incoming' : 'outgoing'}`;
+                if (!animate) bubble.style.animation = 'none';
+                
+                let contentHTML = '';
+                if(message.text) contentHTML += `<div class="content">${message.text.replace(/\n/g, '<br>')}</div>`;
+                if(message.image) contentHTML += `<img src="${message.image}" alt="attachment" class="image-attachment">`;
+                if (message.buttons) contentHTML += `<div class="action-buttons">${message.buttons.map(btn => `<button data-payload="${btn.payload}">${btn.title}</button>`).join('')}</div>`;
+                
+                const timestamp = message.timestamp ? new Date(message.timestamp) : new Date();
+                let tsHTML = `<div class="timestamp">${timestamp.toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}`;
+                if (isUser || message.seen) tsHTML += `<span class="seen-tick">✓✓</span>`;
+                tsHTML += `</div>`;
+                
+                bubble.innerHTML = contentHTML + tsHTML;
+                dom.canvas.appendChild(bubble);
+                scrollToBottom();
+            }
+
+            function addMessageWithOrderDraft(draft) {
+                const messageId = `draft-${Date.now()}`;
+                const bubble = document.createElement('div');
+                bubble.className = 'message-bubble outgoing';
+                bubble.id = messageId;
+                
+                const hasUnidentified = draft.items.some(item => item.isUnidentified);
+
+                const itemsHTML = draft.items.map((item, index) => `
+                    <div class="product-item ${item.isUnidentified ? 'unidentified' : ''}">
+                        <input type="text" value="${item.productName}" data-field="productName" data-index="${index}">
+                        <input type="number" value="${item.quantity}" data-field="quantity" data-index="${index}">
+                    </div>`).join('');
+                
+                bubble.innerHTML = `
+                    <div>בסדר גמור, הכנתי לך טיוטת הזמנה על סמך ההודעה שלך. אנא בדוק שהכל נכון לפני השליחה.</div>
+                    <div class="order-draft-card">
+                        <div id="timer-${messageId}"></div>
+                        <div class="draft-section">
+                            <h3>פרטי משלוח</h3>
+                            <div class="draft-input-group"><label>כתובת</label><input type="text" data-field="address" value="${draft.deliveryDetails.address || ''}"></div>
+                            <div class="draft-input-group"><label>איש קשר</label><input type="text" data-field="contactName" value="${draft.deliveryDetails.contactName || ''}"></div>
+                            <div class="draft-input-group"><label>טלפון</label><input type="text" data-field="contactPhone" value="${draft.deliveryDetails.contactPhone || ''}"></div>
+                        </div>
+                        <div class="draft-section">
+                            <h3>פריטים</h3>
+                            ${itemsHTML}
+                        </div>
+                        ${hasUnidentified ? `<p style="font-size:0.8rem; color: var(--accent); font-weight:600;">שים לב, יש פריטים שלא זיהיתי מהקטלוג. אנא ודא את שמם.</p>` : ''}
+                        <div class="action-buttons">
+                            <button class="btn-cancel" data-action="cancel-draft">בטל</button>
+                            <button class="btn-confirm" data-action="confirm-draft">אשר ושלח</button>
+                        </div>
+                    </div>`;
+
+                dom.canvas.appendChild(bubble);
+                startOrderTimer(messageId);
+                scrollToBottom();
+            }
+            
+            function startOrderTimer(messageId) {
+                const timerEl = document.getElementById(`timer-${messageId}`);
+                if (!timerEl) return;
+                let timeLeft = 600; // 10 minutes
+                orderDraftTimer = setInterval(() => {
+                    timeLeft--;
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = timeLeft % 60;
+                    timerEl.textContent = `זמן לעריכה: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                    if (timeLeft <= 0) {
+                        clearInterval(orderDraftTimer);
+                        cancelOrderDraft(messageId, true);
+                    }
+                }, 1000);
+            }
+
+            function finalizeOrderDraft(messageId) {
+                clearInterval(orderDraftTimer);
+                const draftContainer = document.getElementById(messageId);
+                const finalDraft = { deliveryDetails: {}, items: [] };
+
+                finalDraft.deliveryDetails.address = draftContainer.querySelector('input[data-field="address"]').value;
+                finalDraft.deliveryDetails.contactName = draftContainer.querySelector('input[data-field="contactName"]').value;
+                finalDraft.deliveryDetails.contactPhone = draftContainer.querySelector('input[data-field="contactPhone"]').value;
+
+                draftContainer.querySelectorAll('.product-item').forEach(el => {
+                    finalDraft.items.push({
+                        productName: el.querySelector('input[data-field="productName"]').value,
+                        quantity: el.querySelector('input[data-field="quantity"]').value
+                    });
+                });
+                
+                // Here you would send `finalDraft` to a `confirmAndCreateOrder` action on your server.
+                // For now, we'll just simulate it and open WhatsApp.
+                
+                const itemsList = finalDraft.items.map((item, i) => `${i+1}. ${item.productName} - *כמות: ${item.quantity}*`).join('\n');
+                const deliveryText = `*כתובת:* ${finalDraft.deliveryDetails.address}\n*איש קשר:* ${finalDraft.deliveryDetails.contactName} (${finalDraft.deliveryDetails.contactPhone})`;
+                const whatsappMessage = encodeURIComponent(`*הזמנה חדשה (לאחר עריכה) 🚀*\n\n*👤 לקוח:* ${state.user['שם_לקוח']}\n\n*📍 פרטי משלוח:*\n${deliveryText}\n\n*📋 פירוט הזמנה:*\n${itemsList}`);
+                
+                window.open(`https://wa.me/972508860896?text=${whatsappMessage}`, '_blank');
+                
+                draftContainer.innerHTML = 'ההזמנה נשלחה בהצלחה! תודה רבה. 👍';
+                confetti();
+            }
+
+            function cancelOrderDraft(messageId, isExpired = false) {
+                 clearInterval(orderDraftTimer);
+                 const draftContainer = document.getElementById(messageId);
+                 if (draftContainer) {
+                    draftContainer.innerHTML = isExpired ? 'זמן העריכה הסתיים, הטיוטה בוטלה.' : 'הטיוטה בוטלה.';
+                 }
+            }
+
+            function setTyping(isTyping) {
+                let indicator = document.getElementById('typing-indicator');
+                if (isTyping && !indicator) {
+                    indicator = document.createElement('div');
+                    indicator.id = 'typing-indicator';
+                    indicator.className = 'message-bubble typing-indicator';
+                    indicator.innerHTML = '<span></span><span></span><span></span>';
+                    dom.canvas.appendChild(indicator);
+                    scrollToBottom();
+                } else if (!isTyping && indicator) {
+                    indicator.remove();
+                }
+            }
+            
+            function showSpinner(text) { dom.spinnerText.textContent = text; dom.spinner.style.display = 'flex'; }
+            function hideSpinner() { dom.spinner.style.display = 'none'; }
+            function scrollToBottom() { dom.canvas.scrollTop = dom.canvas.scrollHeight; }
+            async function apiPost(body) {
+                const response = await fetch(API_URL, { method: 'POST', redirect: 'follow', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+                return response.json();
+            }
+
+            init();
         });
     </script>
 </body>
 </html>
+
