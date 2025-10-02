@@ -9,9 +9,8 @@
     <link rel="apple-touch-icon" href="https://i.postimg.cc/2SbDgD1B/1.png">
     <link rel="icon" href="https://i.postimg.cc/2SbDgD1B/1.png">
 
-    <!-- Leaflet CSS for Maps -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/S7L5bSwKk4l7rvWdY=" crossorigin=""/>
+    <!-- Leaflet CSS for Maps - FIX: Removed integrity attribute to solve SRI error -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
         xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJz/fQYl5K8cQ6Qd/T2n/uA7B9S0S5S5bW4e7lQ8hE5fL5d5e5/j1w+f5f+A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -19,11 +18,9 @@
     <!-- OneSignal SDK for Push Notifications -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     
-    <!-- OneSignal Logic (requires showToast, so defined below) -->
+    <!-- OneSignal and Global Functions -->
     <script>
         window.OneSignalDeferred = window.OneSignalDeferred || [];
-        
-        // ** GLOBAL FUNCTIONS DEFINED HERE TO FIX REFERENCE ERRORS **
         
         /** Displays a temporary toast notification. (Defined globally) */
         window.showToast = function (message, type = 'info') {
@@ -54,11 +51,15 @@
             
             window.OneSignalDeferred.push(async function(OneSignal) {
                 try {
-                    // *** FIX: Using OneSignal.User.setExternalId as per v16 documentation ***
-                    console.log("OneSignal ready. Setting External ID:", clientId);
-                    await OneSignal.User.setExternalId(clientId);
-                    console.log("External ID set successfully.");
-                    // Optional: Call showToast after success
+                    // *** FIX: Check if OneSignal.User exists before calling setExternalId ***
+                    if (OneSignal.User && OneSignal.User.setExternalId) {
+                        console.log("OneSignal User ready. Setting External ID:", clientId);
+                        await OneSignal.User.setExternalId(clientId);
+                        console.log("External ID set successfully.");
+                    } else {
+                        // This path should ideally not be hit if the SDK loaded correctly
+                        console.warn("OneSignal.User is not ready or setExternalId is missing.");
+                    }
                 } catch (error) {
                     console.error("Error setting OneSignal External ID:", error);
                     window.showToast('שגיאה בשיוך התראות!', 'error'); // Using global showToast
@@ -69,10 +70,14 @@
         // Initial OneSignal setup (Mock App ID)
         window.OneSignalDeferred.push(function(OneSignal) {
             try {
-                OneSignal.init({
-                    appId: "MOCK-APP-ID-ACC8A2BC", // Replace with your actual OneSignal App ID
-                    allowLocalhostAsSecure: true,
-                });
+                // FIX: Check if OneSignal is initialized before re-initializing (prevents "AppID doesn't match")
+                if (!OneSignal.isPushNotificationsSupported() && !OneSignal.isPushNotificationsEnabled()) {
+                    OneSignal.init({
+                        appId: "MOCK-APP-ID-ACC8A2BC", // Replace with your actual OneSignal App ID
+                        allowLocalhostAsSecure: true,
+                        autoResubscribe: true // Ensure subscription logic is robust
+                    });
+                }
             } catch (error) {
                 console.error("OneSignal Initialization Failed:", error);
             }
@@ -399,6 +404,9 @@
         }
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        .typing-dot:nth-child(3) { animation-delay: 0s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
             40% { transform: scale(1); }
         }
 
@@ -657,10 +665,7 @@
                             <!-- Placeholder for Image -->
                             <img src="https://placehold.co/400x150/e0f2fe/0ea5e9?text=צילום+מסך+הזמנה+חדשה" alt="
 
-
-
 [Image of New Order Screen]
-
 ">
                             <div class="guide-actions">
                                 <button class="btn btn-secondary guide-try-btn" data-target="page-materials">
@@ -740,9 +745,8 @@
         <button data-page="page-history"><i class="fas fa-history fa-lg"></i> היסטוריה</button>
     </nav>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20n6sB0/wY05pA8G7S8164K+5R3NfK5e2c6xJ+D6XjQ=" crossorigin=""></script>
+    <!-- Leaflet JS - FIX: Removed integrity attribute to solve SRI error -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script type="module">
         // Global Constants and API Setup
@@ -798,6 +802,7 @@
         const dom = {};
         
         // --- Utility Functions ---
+
         // showToast and closeModal moved to global <script> block above to fix ReferenceError.
 
         /** Checks time and shows a personalized welcome modal. */
@@ -1206,14 +1211,19 @@
         /** Requests notification permissions via OneSignal. */
         function enableNotifications() {
             window.OneSignalDeferred.push(function(OneSignal) {
-                OneSignal.User.pushSubscription.optIn()
-                    .then(() => {
-                        showToast('✅ בקשת ההתראות נשלחה בהצלחה!', 'success');
-                    })
-                    .catch(error => {
-                        console.error("Error subscribing to push:", error);
-                        showToast('⚠️ לא ניתן לאפשר התראות. ודא שלא חסמת אותן בהגדרות הדפדפן.', 'error');
-                    });
+                // FIX: Use OneSignal.User for subscription
+                if (OneSignal.User && OneSignal.User.pushSubscription) {
+                    OneSignal.User.pushSubscription.optIn()
+                        .then(() => {
+                            showToast('✅ בקשת ההתראות נשלחה בהצלחה!', 'success');
+                        })
+                        .catch(error => {
+                            console.error("Error subscribing to push:", error);
+                            showToast('⚠️ לא ניתן לאפשר התראות. ודא שלא חסמת אותן בהגדרות הדפדפן.', 'error');
+                        });
+                } else {
+                     showToast('⚠️ שירות ההתראות עדיין לא נטען במלואו.', 'error');
+                }
             });
         }
         
