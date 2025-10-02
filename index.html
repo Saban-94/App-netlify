@@ -11,319 +11,355 @@
 
     <style>
         :root {
-            --brand: #0b72b9; --accent: #ff9f1c; --bg: #e5ddd5; --app-bg: #f7f7f7;
-            --text-dark: #333; --text-light: #666; --border: #e0e0e0;
-            --outgoing-bg: #dcf8c6; --incoming-bg: #ffffff; --system-bg: #e1f2fb;
-            --radius-l: 20px; --radius-s: 8px; --shadow: 0 4px 12px rgba(0,0,0,0.08);
-            --font-main: 'Assistant', sans-serif;
+            --brand: #008069; /* WhatsApp Green Header */
+            --accent: #25D366; /* WhatsApp Action Green */
+            --bg: #E5DDD5;
+            --app-bg: #F0F2F5;
+            --text-dark: #111B21;
+            --text-light: #667781;
+            --border: #e9edef;
+            --outgoing-bg: #E7FFDB;
+            --incoming-bg: #FFFFFF;
+            --system-bg: #E3F2FD;
+            --radius-l: 12px;
+            --radius-s: 7.5px;
+            --shadow: 0 1px 2px rgba(0,0,0,0.08);
         }
-        html, body {
-            height: 100%; margin: 0; padding: 0;
-            overscroll-behavior: none;
-            background-color: var(--app-bg);
-            font-family: var(--font-main);
-        }
-        #app-container {
-            display: flex; flex-direction: column;
-            height: 100%; max-width: 800px; margin: 0 auto;
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: 'Assistant', sans-serif;
             background-color: var(--bg);
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        #chat-header {
-            display: flex; align-items: center; padding: 10px 15px;
-            background-color: #ededed; border-bottom: 1px solid #ccc; gap: 15px;
-            position: sticky; top: 0; z-index: 10;
-        }
-        #chat-header img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; }
-        #header-info { display: flex; flex-direction: column; color: var(--text-dark); }
-        #header-title { font-weight: 700; font-size: 1.1rem; }
-        #header-subtitle { font-size: 0.9rem; color: var(--text-light); }
-        #chat-canvas {
-            flex: 1; padding: 20px; overflow-y: auto;
-            display: flex; flex-direction: column; gap: 12px;
-        }
-        .message-bubble { max-width: 75%; padding: 10px 15px; border-radius: var(--radius-l); line-height: 1.5; position: relative; word-wrap: break-word; }
-        .user-bubble { background-color: var(--outgoing-bg); align-self: flex-end; border-bottom-right-radius: var(--radius-s); }
-        .bot-bubble, .system-bubble { background-color: var(--incoming-bg); align-self: flex-start; border-bottom-left-radius: var(--radius-s); }
-        .system-bubble { background-color: var(--system-bg); align-self: center; width: fit-content; max-width: 80%; text-align: center; font-size: 0.85rem; color: #555; border-radius: var(--radius-s); }
-        #chat-footer-wrapper { background-color: #f0f0f0; padding-top: 5px; }
-        #quick-replies { display: flex; gap: 8px; padding: 0 10px 8px; overflow-x: auto; }
-        .quick-reply-chip { padding: 8px 16px; border-radius: var(--radius-l); background-color: #fff; border: 1px solid var(--brand); color: var(--brand); font-weight: 600; cursor: pointer; white-space: nowrap; }
-        #chat-footer { display: flex; align-items: center; padding: 10px; background-color: #f0f0f0; }
-        #message-input { flex: 1; padding: 12px 18px; border-radius: var(--radius-l); border: 1px solid var(--border); font-size: 1rem; font-family: var(--font-main); }
-        #send-button { background: none; border: none; padding: 10px; cursor: pointer; }
-        #send-button svg { width: 28px; height: 28px; fill: var(--brand); }
-        .typing-indicator { padding: 15px 20px; }
-        .typing-indicator span { height: 8px; width: 8px; background-color: #9E9E9E; border-radius: 50%; display: inline-block; animation: bounce 1.3s infinite ease-in-out; margin: 0 2px; }
-        .typing-indicator span:nth-of-type(2) { animation-delay: -1.1s; }
-        .typing-indicator span:nth-of-type(3) { animation-delay: -0.9s; }
-        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+
+        .app-shell { width: 100%; height: 100%; max-width: 450px; background-color: var(--app-bg); display: flex; flex-direction: column; box-shadow: var(--shadow); transition: all 0.3s ease; position: relative; }
+        @media (min-width: 450px) { .app-shell { max-height: 95vh; border-radius: var(--radius-l); } }
+
+        .chat-header { flex-shrink: 0; display: flex; align-items: center; gap: 15px; padding: 10px 15px; background-color: #008069; color: white; cursor: pointer;}
+        .avatar { width: 45px; height: 45px; border-radius: 50%; overflow: hidden;}
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .header-info h1 { font-size: 1.1rem; font-weight: 700; }
+        .header-info p { font-size: 0.8rem; opacity: 0.8; }
+
+        .chat-canvas { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
         
-        #app-spinner { position: fixed; inset: 0; background-color: rgba(255, 255, 255, 0.9); display: none; justify-content: center; align-items: center; flex-direction: column; gap: 15px; z-index: 1000; }
-        #app-spinner-text { font-size: 1.1rem; color: var(--text-dark); }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--brand); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .message-bubble { position: relative; max-width: 85%; padding: 8px 12px; border-radius: var(--radius-s); line-height: 1.5; animation: popIn 0.3s ease-out; box-shadow: var(--shadow); }
+        .message-bubble.outgoing { background-color: var(--outgoing-bg); align-self: flex-end; border-top-right-radius: 0; }
+        .message-bubble.incoming { background-color: var(--incoming-bg); align-self: flex-start; border-top-left-radius: 0; }
+
+        .message-bubble::after { content: ''; position: absolute; top: 0; width: 0; height: 0; border: 10px solid transparent; }
+        .message-bubble.outgoing::after { right: -10px; border-right-width: 0; border-top-color: var(--outgoing-bg); }
+        .message-bubble.incoming::after { left: -10px; border-left-width: 0; border-top-color: var(--incoming-bg); }
+
+        .message-content { padding-bottom: 15px; } /* Space for timestamp */
+        .timestamp { position: absolute; bottom: 5px; right: 10px; font-size: 0.7rem; color: var(--text-light); opacity: 0.7; }
+        .message-bubble.outgoing .timestamp { right: auto; left: 10px; }
+        .seen-tick { font-weight: 700; margin-right: 3px; }
+        .seen-tick.blue { color: #34B7F1; }
         
-        .message-buttons { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
-        .message-buttons button { background-color: #fff; border: 1px solid var(--brand); color: var(--brand); padding: 8px 12px; border-radius: var(--radius-l); cursor: pointer; font-weight: 600; transition: all 0.2s ease; }
+        .system-message { align-self: center; background-color: var(--system-bg); color: #026198; font-size: 0.85rem; padding: 8px 12px; border-radius: var(--radius-l); text-align: center; animation: popIn 0.3s; }
+        .typing-indicator { align-self: flex-start; padding: 10px 15px; background-color: var(--incoming-bg); border-radius: var(--radius-s); display: flex; gap: 5px; }
+        .typing-indicator span { width: 8px; height: 8px; border-radius: 50%; background-color: #ccc; animation: typing 1.2s infinite; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
         
-        /* Order Draft Card Styles */
-        .order-draft-card { background-color: #fff; border-radius: var(--radius-s); padding: 15px; box-shadow: var(--shadow); border-left: 5px solid var(--accent); }
-        .order-draft-card h3 { margin: 0 0 10px; font-size: 1.1rem; color: var(--brand); }
-        .order-draft-card ul { list-style: none; padding: 0; margin: 0 0 15px; }
-        .order-draft-card li { padding: 5px 0; border-bottom: 1px solid #eee; }
-        .order-draft-card .details p { margin: 2px 0; font-size: 0.9rem; }
-        .order-draft-card .actions { display: flex; gap: 10px; margin-top: 15px; }
-        .order-draft-card .actions button { flex: 1; padding: 10px; font-weight: 700; border-radius: var(--radius-s); cursor: pointer; }
-        .confirm-btn { background-color: var(--brand); color: white; border: none; }
-        .edit-btn { background-color: #eee; color: var(--text-dark); border: 1px solid #ccc; }
+        .chat-footer { flex-shrink: 0; display: flex; align-items: flex-end; gap: 10px; padding: 10px; background-color: #F0F2F5; border-top: 1px solid var(--border); }
+        #message-input { flex-grow: 1; border: none; padding: 12px 15px; border-radius: var(--radius-l); font-family: inherit; font-size: 1rem; resize: none; max-height: 100px; }
+        .footer-btn { width: 45px; height: 45px; border-radius: 50%; border: none; background-color: var(--brand); color: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; flex-shrink: 0; }
+        .footer-btn:active { transform: scale(0.9); }
         
-        .whatsapp-share-btn { background-color: #25D366; color: white; border: none; padding: 10px 15px; border-radius: var(--radius-s); font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
-        .whatsapp-share-btn svg { width: 20px; height: 20px; fill: white; }
+        .order-draft-card { background-color: #fefefe; border: 2px solid var(--accent); border-radius: var(--radius-s); padding: 15px; margin-top: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .order-draft-card h3 { font-size: 1rem; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 10px; }
+        .product-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px dashed #eee; }
+        .product-item input[type="text"] { flex-grow: 1; border: 1px solid #ccc; border-radius: 4px; padding: 5px;}
+        .quantity-controls { display: flex; align-items: center; }
+        .quantity-controls button { width: 25px; height: 25px; border: 1px solid #ccc; background: #fafafa; cursor: pointer; border-radius: 50%; }
+        .quantity-controls input { width: 40px; text-align: center; border: none; }
+        .delete-item-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #ff3b30; }
+
+        .action-buttons { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+        .action-buttons button { width: 100%; text-align: right; padding: 12px 15px; border: none; background: var(--incoming-bg); border-radius: var(--radius-s); cursor: pointer; font-family: inherit; font-size: 1rem; color: #007AFF; box-shadow: var(--shadow); }
+        
+        #spinner-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; flex-direction: column; gap: 10px; color: var(--brand); font-weight: 600; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top-color: var(--brand); border-radius: 50%; animation: spin 1s linear infinite; }
+
+        .sent-order-summary { background-color: #FFF5C4; } /* Different color for confirmed order */
+        .sent-order-summary .order-summary-header { font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;}
+        .sent-order-summary ul { list-style: none; padding-right: 15px; }
+
+        .side-panel { position: absolute; top: 0; right: 0; width: 85%; max-width: 350px; height: 100%; background-color: var(--app-bg); z-index: 300; transform: translateX(100%); transition: transform 0.3s ease-in-out; display: flex; flex-direction: column; }
+        .side-panel.active { transform: translateX(0); box-shadow: -5px 0 15px rgba(0,0,0,0.1); }
+        .side-panel-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.3); z-index: 299; opacity: 0; visibility: hidden; transition: opacity 0.3s; }
+        .side-panel-overlay.active { opacity: 1; visibility: visible; }
+        .side-panel-header { flex-shrink: 0; padding: 10px 15px; background: var(--brand); color: white; display: flex; align-items: center; gap: 20px; }
+        .side-panel-header button { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+        .side-panel-content { padding: 20px; overflow-y: auto; flex-grow: 1; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.9) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
     </style>
 </head>
 <body>
-
-    <div id="app-container">
-        <header id="chat-header">
-            <img id="header-img" src="https://placehold.co/100x100/EFEFEF/AAAAAA?text=👤" alt="Profile">
-            <div id="header-info">
-                <span id="header-title">טוען...</span>
-                <span id="header-subtitle"></span>
+    <div class="app-shell">
+        <header class="chat-header" id="chat-header">
+            <div class="avatar"><img id="rep-avatar" src="https://i.postimg.cc/Fs3pXm2c/1.png" alt="נציג"></div>
+            <div class="header-info">
+                <h1 id="rep-name">ראמי (עוזר אישי)</h1>
+                <p>זמין 24/7 לשירותך</p>
             </div>
         </header>
 
-        <main id="chat-canvas"></main>
+        <main class="chat-canvas" id="chat-canvas"></main>
 
-        <div id="chat-footer-wrapper">
-            <div id="quick-replies"></div>
-            <footer id="chat-footer">
-                <input type="text" id="message-input" placeholder="הקלד/י הודעה...">
-                <button id="send-button">
-                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
-                </button>
-            </footer>
+        <footer class="chat-footer">
+            <textarea id="message-input" placeholder="הקלד או הדבק רשימה..." rows="1"></textarea>
+            <button class="footer-btn" id="send-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576 6.636 10.07Zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/></svg>
+            </button>
+        </footer>
+
+        <div id="spinner-overlay"><div class="spinner"></div><span id="spinner-text"></span></div>
+        
+        <div class="side-panel-overlay" id="side-panel-overlay"></div>
+        <div class="side-panel" id="side-panel">
+            <div class="side-panel-header">
+                <button id="close-panel-btn">→&</button>
+                <h3>פרטי לקוח</h3>
+            </div>
+            <div class="side-panel-content">
+                <p><strong>שם:</strong> <span id="panel-customer-name"></span></p>
+                <p><strong>מזהה:</strong> <span id="panel-customer-id"></span></p>
+                <hr>
+                <h4>היסטוריית הזמנות אחרונות</h4>
+                <ul id="panel-order-history"><li>טוען היסטוריה...</li></ul>
+            </div>
         </div>
-    </div>
-    
-    <div id="app-spinner">
-        <div class="loader"></div>
-        <span id="app-spinner-text">טוען שיחה...</span>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- CONFIGURATION ---
-            const API_URL = 'https://script.google.com/macros/s/AKfycbzUmTM5tV8bx_03Ag5lysoNkBW6aposRTDERBtgbKIU8BS2HXPX9zWgNvxNm0vZmEi3/exec';
-            let currentClientId;
-            let conversationState = {}; // Object to hold conversation context
+            const API_URL = "https://script.google.com/macros/s/AKfycbzbo8jqgN7SBpU5xcARbNxcUwnYZc7ogcvp9XcYMM_lMr_og2mdkjLSA7C7gp0ptLzY/exec";
 
-            // --- DOM ELEMENTS ---
             const dom = {
                 canvas: document.getElementById('chat-canvas'),
                 input: document.getElementById('message-input'),
-                sendBtn: document.getElementById('send-button'),
-                quickReplies: document.getElementById('quick-replies'),
-                headerImg: document.getElementById('header-img'),
-                headerTitle: document.getElementById('header-title'),
-                headerSubtitle: document.getElementById('header-subtitle'),
-                spinner: document.getElementById('app-spinner'),
-                spinnerText: document.getElementById('app-spinner-text'),
+                sendBtn: document.getElementById('send-btn'),
+                spinner: document.getElementById('spinner-overlay'),
+                spinnerText: document.getElementById('spinner-text'),
+                repName: document.getElementById('rep-name'),
+                repAvatar: document.getElementById('rep-avatar'),
+                chatHeader: document.getElementById('chat-header'),
+                sidePanel: document.getElementById('side-panel'),
+                sidePanelOverlay: document.getElementById('side-panel-overlay'),
+                closePanelBtn: document.getElementById('close-panel-btn'),
             };
 
-            // --- INITIALIZATION ---
+            let state = { user: null, chatHistory: [], isBotTyping: false };
+
             async function init() {
-                const urlParams = new URLSearchParams(window.location.search);
-                currentClientId = urlParams.get('id') || '60120';
-                
-                showSpinner('טוען נתוני לקוח...');
+                showSpinner("מתחבר...");
                 try {
-                    const response = await apiPost({ action: 'getClientData', identifier: currentClientId });
-                    if (response.success) {
-                        updateHeader(response.client);
-                        handleBotResponse(response);
-                    } else {
-                        handleApiError('לא נמצא לקוח עם המזהה שצוין.');
-                    }
-                } catch (error) {
-                    handleApiError('שגיאת תקשורת. בדוק את חיבור האינטרנט.');
+                    const identifier = '60120'; // In production, get from login
+                    const response = await apiPost({ action: 'login', identifier });
+                    
+                    if (response.status === 'success') {
+                        state.user = response.user;
+                        updateHeader(response.user);
+                        const greeting = getGreeting();
+                        addMessageToCanvas({
+                            sender: 'bot',
+                            text: `${greeting}\nאיך אפשר לעזור היום?`,
+                            buttons: [
+                                { title: '📝 יצירת הזמנה חדשה', payload: 'new_order' },
+                                { title: '🔄 שכפול הזמנה אחרונה', payload: 'repeat_last_order' },
+                                { title: '🚚 בדיקת סטטוס הזמנה', payload: 'check_order_status' }
+                            ]
+                        });
+                    } else throw new Error(response.message);
+                } catch (e) {
+                    addMessageToCanvas({ sender: 'bot', text: 'שגיאה בהתחברות. נסה לרענן.' });
                 } finally {
                     hideSpinner();
-                }
-            }
-
-            // --- EVENT LISTENERS ---
-            dom.sendBtn.addEventListener('click', () => sendMessage(dom.input.value));
-            dom.input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') sendMessage(dom.input.value);
-            });
-
-            // --- CORE LOGIC ---
-            async function sendMessage(text, isPayload = false) {
-                const trimmedText = text.trim();
-                if (!trimmedText) return;
-
-                if (!isPayload) {
-                    addMessage({ sender: 'user', text: trimmedText });
-                }
-                clearQuickReplies();
-                dom.input.value = '';
-                setTyping(true);
-
-                try {
-                    const response = await apiPost({
-                        action: 'handleClientMessage',
-                        identifier: currentClientId,
-                        message: { text: trimmedText },
-                        state: conversationState // Send current state to backend
-                    });
-                    handleBotResponse(response);
-                } catch (error) {
-                    handleApiError('שגיאת תקשורת. נסה שוב מאוחר יותר.');
-                } finally {
-                    setTyping(false);
+                    setupEventListeners();
                 }
             }
             
-            function handleBotResponse(response) {
-                if (!response.success) {
-                    handleApiError(response.error || 'התקבלה תגובה לא תקינה מהשרת.');
-                    return;
-                }
-                
-                // The backend can send multiple messages at once
-                const messages = response.replies || (response.initialMessage ? [response.initialMessage] : []);
-                
-                messages.forEach(msg => addMessage(msg));
+            function setupEventListeners() {
+                dom.sendBtn.addEventListener('click', handleUserInput);
+                dom.input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleUserInput(); }
+                });
 
-                // Update conversation state if provided by the backend
-                if (response.newState) {
-                    conversationState = response.newState;
-                }
-                 if (response.quickReplies && response.quickReplies.length > 0) {
-                    renderQuickReplies(response.quickReplies);
+                dom.chatHeader.addEventListener('click', openSidePanel);
+                dom.closePanelBtn.addEventListener('click', closeSidePanel);
+                dom.sidePanelOverlay.addEventListener('click', closeSidePanel);
+
+                dom.canvas.addEventListener('click', (e) => {
+                    const button = e.target.closest('button[data-action]');
+                    if (!button) return;
+                    
+                    const action = button.dataset.action;
+                    const messageId = button.closest('.message-bubble').id;
+
+                    if (action === 'confirm-draft') finalizeOrderDraft(messageId);
+                    if (action === 'cancel-draft') cancelOrderDraft(messageId);
+                });
+            }
+
+            function updateHeader(user) {
+                if(!user) return;
+                dom.repName.textContent = user.אווטאר_נציג || "ראמי (עוזר אישי)";
+                dom.repAvatar.src = user.תמונת_פרופיל || "https://i.postimg.cc/Fs3pXm2c/1.png";
+            }
+
+            function getGreeting() {
+                const hour = new Date().getHours();
+                const name = state.user && state.user['שם_לקוח'] ? state.user['שם_לקוח'].split(' ')[0] : 'לקוח';
+                if (hour >= 5 && hour < 12) return `בוקר טוב ${name} ☀️`;
+                if (hour >= 12 && hour < 18) return `צהריים טובים ${name} 🍽️`;
+                if (hour >= 18 && hour < 22) return `ערב טוב ${name} 🌙`;
+                return `לילה טוב ${name}`;
+            }
+
+            function handleUserInput() {
+                const text = dom.input.value.trim();
+                if (!text) return;
+                addMessageToCanvas({ sender: 'user', text });
+                dom.input.value = '';
+                processMessage(text);
+            }
+            
+            async function processMessage(text) {
+                setTyping(true);
+                try {
+                    const response = await apiPost({ action: 'handleClientMessage', clientId: state.user['מזהה_לקוח'], text });
+                    setTyping(false);
+
+                    if (response.status === 'success') {
+                        if (response.type === 'orderDraft') addMessageWithOrderDraft(response.draft);
+                        else if (response.newMessages) response.newMessages.forEach((msg, i) => setTimeout(() => addMessageToCanvas(msg), i * 600));
+                    } else throw new Error(response.message);
+                } catch (e) {
+                    setTyping(false);
+                    addMessageToCanvas({ sender: 'bot', text: 'הייתה בעיה בתקשורת, נסה שוב.'});
                 }
             }
 
-            // --- UI RENDERING ---
-            function addMessage(msg) {
-                const typingIndicator = document.getElementById('typing-indicator');
-                if (typingIndicator) typingIndicator.remove();
-                
+            function addMessageToCanvas(message) {
                 const bubble = document.createElement('div');
-                bubble.className = `message-bubble ${msg.sender}-bubble`;
+                const isUser = message.sender === 'user';
+                bubble.className = `message-bubble ${isUser ? 'incoming' : 'outgoing'}`;
                 
-                // Use different renderers based on message type
-                switch(msg.type) {
-                    case 'orderDraft':
-                        bubble.innerHTML = createOrderDraftHTML(msg.data);
-                        break;
-                    case 'whatsappShare':
-                         bubble.innerHTML = createWhatsappShareHTML(msg.data);
-                        break;
-                    default: // 'text' or 'textWithButtons'
-                        bubble.innerHTML = createTextWithButtonsHTML(msg);
+                let contentHTML = `<div class="message-content">${message.text ? message.text.replace(/\n/g, '<br>') : ''}</div>`;
+                if (message.buttons) {
+                    contentHTML += `<div class="action-buttons">${message.buttons.map(btn => `<button data-payload="${btn.payload}">${btn.title}</button>`).join('')}</div>`;
                 }
+                
+                const timestamp = message.timestamp ? new Date(message.timestamp) : new Date();
+                let tsHTML = `<div class="timestamp">${timestamp.toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}`;
+                tsHTML += `<span class="seen-tick ${message.seen ? 'blue' : ''}">✓✓</span>`;
+                tsHTML += `</div>`;
+                
+                bubble.innerHTML = contentHTML + tsHTML;
+                dom.canvas.appendChild(bubble);
+                scrollToBottom();
+            }
+
+            function addMessageWithOrderDraft(draft) {
+                const messageId = `draft-${Date.now()}`;
+                const bubble = document.createElement('div');
+                bubble.className = 'message-bubble outgoing';
+                bubble.id = messageId;
+                
+                const itemsHTML = draft.items.map((item, index) => `
+                    <div class="product-item">
+                        <input type="text" value="${item.productName}" data-field="productName" data-index="${index}">
+                        <div class="quantity-controls">
+                           <button data-op="minus" data-index="${index}">-</button>
+                           <input type="number" value="${item.quantity}" data-field="quantity" data-index="${index}">
+                           <button data-op="plus" data-index="${index}">+</button>
+                        </div>
+                        <button class="delete-item-btn" data-index="${index}">🗑️</button>
+                    </div>`).join('');
+                
+                bubble.innerHTML = `
+                    <div>הכנתי טיוטת הזמנה. אנא בדוק שהכל נכון לפני השליחה.</div>
+                    <div class="order-draft-card">
+                        <div class="draft-section"><h3>פריטים</h3>${itemsHTML}</div>
+                        <div class="action-buttons" style="flex-direction:row; gap:10px;">
+                            <button style="background: #ff3b30; color:white; text-align:center;" data-action="cancel-draft">בטל</button>
+                            <button style="background: var(--accent); color:white; text-align:center;" data-action="confirm-draft">אשר ושלח</button>
+                        </div>
+                    </div>`;
 
                 dom.canvas.appendChild(bubble);
                 scrollToBottom();
-                
-                // Add confetti effect for successful order confirmation
-                if (msg.payload === 'order_confirmed_celebrate') {
-                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-                }
             }
             
-            function createTextWithButtonsHTML(msg) {
-                let html = `<div class="message-text">${msg.text.replace(/\n/g, '<br>')}</div>`;
-                if (msg.buttons && msg.buttons.length > 0) {
-                    html += '<div class="message-buttons">';
-                    msg.buttons.forEach(btn => {
-                        html += `<button onclick="handlePayloadClick('${btn.payload}')">${btn.title}</button>`;
+            function finalizeOrderDraft(messageId) {
+                const draftContainer = document.getElementById(messageId);
+                const finalDraft = { items: [] };
+
+                draftContainer.querySelectorAll('.product-item').forEach(el => {
+                    finalDraft.items.push({
+                        productName: el.querySelector('input[data-field="productName"]').value,
+                        quantity: el.querySelector('input[data-field="quantity"]').value
                     });
-                    html += '</div>';
-                }
-                return html;
-            }
-            
-            function createOrderDraftHTML(data) {
-                let itemsList = data.items.map(item => `<li>${item.quantity} x ${item.name}</li>`).join('');
-                return `
-                    <div class="order-draft-card">
-                        <h3>טיוטת הזמנה לאישור</h3>
-                        <ul>${itemsList}</ul>
-                        <div class="details">
-                            <p><strong>כתובת:</strong> ${data.address || 'לא צוין'}</p>
-                            <p><strong>איש קשר:</strong> ${data.contact || 'לא צוין'}</p>
-                        </div>
-                        <div class="actions">
-                            <button class="edit-btn" onclick="handlePayloadClick('order:edit:${data.orderId}')">עריכה</button>
-                            <button class="confirm-btn" onclick="handlePayloadClick('order:confirm:${data.orderId}')">אישור ושליחה</button>
-                        </div>
-                    </div>
-                `;
-            }
-
-            function createWhatsappShareHTML(data) {
-                const text = encodeURIComponent(data.text);
-                const phone = data.phone;
-                const url = `https://wa.me/${phone}?text=${text}`;
-                return `
-                    <div class="message-text">${data.title}</div>
-                    <div class="message-buttons">
-                        <a href="${url}" target="_blank" class="whatsapp-share-btn">
-                            <svg viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.894 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.886-.001 2.269.655 4.505 1.905 6.344l-1.225 4.485 4.61-1.212z"/></svg>
-                            שתף ב-WhatsApp
-                        </a>
-                    </div>
-                `;
-            }
-            
-            window.handlePayloadClick = (payload) => {
-                sendMessage(payload, true);
-                document.querySelectorAll('button').forEach(b => {
-                    if (b.getAttribute('onclick')?.includes(payload)) {
-                        b.closest('.message-buttons, .actions')?.querySelectorAll('button').forEach(btn => btn.disabled = true);
-                    }
                 });
-            };
-
-            function renderQuickReplies(replies) {
-                clearQuickReplies();
-                replies.forEach(reply => {
-                    const chip = document.createElement('div');
-                    chip.className = 'quick-reply-chip';
-                    chip.textContent = reply.title;
-                    chip.onclick = () => sendMessage(reply.payload, true);
-                    dom.quickReplies.appendChild(chip);
-                });
+                
+                const itemsList = finalDraft.items.map((item, i) => `${i+1}. ${item.productName} - *כמות: ${item.quantity}*`).join('\n');
+                const whatsappMessage = encodeURIComponent(`*הזמנה חדשה 🚀*\n\n*👤 לקוח:* ${state.user['שם_לקוח']}\n\n*📋 פירוט הזמנה:*\n${itemsList}`);
+                
+                window.open(`https://wa.me/972508860896?text=${whatsappMessage}`, '_blank');
+                
+                const summaryItemsHTML = finalDraft.items.map(item => `<li>${item.productName} (כמות: ${item.quantity})</li>`).join('');
+                draftContainer.className = 'message-bubble outgoing sent-order-summary';
+                draftContainer.innerHTML = `
+                    <div class="order-summary-header">✅ הזמנה נשלחה</div>
+                    <ul>${summaryItemsHTML}</ul>
+                    <div class="timestamp">${new Date().toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'})}<span class="seen-tick blue">✓✓</span></div>`;
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
             }
-            function clearQuickReplies() { dom.quickReplies.innerHTML = ''; }
 
-            // --- UI HELPERS ---
-            function updateHeader(client) {
-                dom.headerImg.src = client['תמונת_פרופיל'] || 'https://placehold.co/100x100/EFEFEF/AAAAAA?text=👤';
-                dom.headerTitle.textContent = client['שם_לקוח'] || 'לקוח לא ידוע';
-                dom.headerSubtitle.textContent = client['אווטאר_נציג'] || 'זמין כעת';
+            function cancelOrderDraft(messageId) {
+                 const draftContainer = document.getElementById(messageId);
+                 if (draftContainer) draftContainer.innerHTML = 'הטיוטה בוטלה.';
             }
-            function handleApiError(message) { addMessage({ sender: 'system', text: message }); }
+
             function setTyping(isTyping) {
                 let indicator = document.getElementById('typing-indicator');
                 if (isTyping && !indicator) {
                     indicator = document.createElement('div');
                     indicator.id = 'typing-indicator';
-                    indicator.className = 'message-bubble bot-bubble typing-indicator';
+                    indicator.className = 'message-bubble typing-indicator incoming';
                     indicator.innerHTML = '<span></span><span></span><span></span>';
                     dom.canvas.appendChild(indicator);
                     scrollToBottom();
-                } else if (!isTyping && indicator) { indicator.remove(); }
+                } else if (!isTyping && indicator) indicator.remove();
             }
+            
+            function openSidePanel() {
+                document.getElementById('panel-customer-name').textContent = state.user?.['שם_לקוח'] || '';
+                document.getElementById('panel-customer-id').textContent = state.user?.['מזהה_לקוח'] || '';
+                dom.sidePanel.classList.add('active');
+                dom.sidePanelOverlay.classList.add('active');
+            }
+
+            function closeSidePanel() {
+                dom.sidePanel.classList.remove('active');
+                dom.sidePanelOverlay.classList.remove('active');
+            }
+
             function showSpinner(text) { dom.spinnerText.textContent = text; dom.spinner.style.display = 'flex'; }
             function hideSpinner() { dom.spinner.style.display = 'none'; }
             function scrollToBottom() { dom.canvas.scrollTop = dom.canvas.scrollHeight; }
             async function apiPost(body) {
-                const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(body) });
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
                 return response.json();
             }
 
@@ -332,4 +368,3 @@
     </script>
 </body>
 </html>
-
