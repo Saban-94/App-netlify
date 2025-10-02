@@ -16,33 +16,6 @@
             --outgoing-bg: #dcf8c6; --incoming-bg: #ffffff; --system-bg: #e1f2fb;
             --radius-l: 20px; --radius-s: 8px; --shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
-            .message-buttons {
-        margin-top: 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-    .message-buttons button {
-        background-color: #fff;
-        border: 1px solid var(--brand);
-        color: var(--brand);
-        padding: 8px 12px;
-        border-radius: var(--radius-l);
-        cursor: pointer;
-        font-weight: 600;
-        transition: all 0.2s ease;
-    }
-    .message-buttons button:hover {
-        background-color: var(--brand);
-        color: #fff;
-    }
-    .message-buttons button:disabled {
-        background-color: #f0f0f0;
-        color: #aaa;
-        border-color: #ccc;
-        cursor: not-allowed;
-    }
-
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body { height: 100%; overflow: hidden; }
         body { font-family: 'Assistant', sans-serif; background-color: var(--bg); background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); display: flex; align-items: center; justify-content: center; }
@@ -188,7 +161,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const API_URL = "https://script.google.com/macros/s/AKfycbxkTvqFUM-JbOgrhE_3MdDxsP1HnVKyOlxP7u3h86LUQod5ip1wxr0eaiv95HsOFEY0/exec";
+            const API_URL = "https://script.google.com/macros/s/AKfycbzbo8jqgN7SBpU5xcARbNxcUwnYZc7ogcvp9XcYMM_lMr_og2mdkjLSA7C7gp0ptLzY/exec";
 
             const dom = {
                 canvas: document.getElementById('chat-canvas'),
@@ -210,88 +183,25 @@
 
             let state = { user: null, chatHistory: [], isBotTyping: false };
             let orderDraftTimer;
-    // שנה את פונקציית init
-    async function init() {
-        showSpinner('טוען שיחה...');
-        // שנה את גוף הבקשה כדי לקבל את הודעת הפתיחה
-        const response = await apiPost({ action: 'getClientData', identifier: '60120' }); // מזהה לקוח לדוגמה
-        hideSpinner();
 
-        if (response.success) {
-            // עדכן את כותרת הצ'אט עם נתוני הלקוח
-            dom.headerImg.src = response.client['תמונת_פרופיל'];
-            dom.headerTitle.textContent = response.client['שם_לקוח'];
-            dom.headerSubtitle.textContent = response.client['אווטאר_נציג'];
-
-            // הצג את הודעת הפתיחה הדינמית
-            addMessage(response.initialMessage);
-        } else {
-            addMessage({ sender: 'system', text: 'אירעה שגיאה בטעינת הנתונים.' });
-        }
-    }
-
-    // שדרג את פונקציית addMessage כדי לתמוך בכפתורים
-    function addMessage(msg) {
-        const bubble = document.createElement('div');
-        bubble.className = `message-bubble ${msg.sender}-bubble`;
-        
-        const textElement = document.createElement('div');
-        textElement.className = 'message-text';
-        textElement.innerHTML = msg.text.replace(/\n/g, '<br>'); // תמיכה בשורות חדשות
-        bubble.appendChild(textElement);
-
-        // הוספת כפתורים אם קיימים
-        if (msg.buttons && msg.buttons.length > 0) {
-            const buttonsContainer = document.createElement('div');
-            buttonsContainer.className = 'message-buttons';
-            msg.buttons.forEach(btn => {
-                const button = document.createElement('button');
-                button.textContent = btn.title;
-                button.onclick = () => handleButtonClick(btn.payload, buttonsContainer);
-                buttonsContainer.appendChild(button);
-            });
-            bubble.appendChild(buttonsContainer);
-        }
-
-        dom.canvas.appendChild(bubble);
-        scrollToBottom();
-    }
-
-    // פונקציה חדשה לטיפול בלחיצה על כפתור
-    function handleButtonClick(payload, container) {
-        // שלח את ה-payload לשרת כאילו הלקוח הקליד אותו
-        sendMessage(payload, true);
-        
-        // נטרל את הכפתורים לאחר לחיצה
-        container.querySelectorAll('button').forEach(b => b.disabled = true);
-    }
-    
-    // שנה מעט את פונקציית sendMessage כדי להבחין בין טקסט חופשי ל-payload
-    async function sendMessage(text, isPayload = false) {
-        if (!text.trim()) return;
-
-        // אם זה לא payload, הצג את הודעת המשתמש
-        if (!isPayload) {
-            addMessage({ sender: 'user', text: text.trim() });
-        }
-        
-        dom.input.value = '';
-        setTyping(true);
-
-        const response = await apiPost({
-            action: 'handleClientMessage',
-            identifier: '60120', // מזהה לקוח לדוגמה
-            message: { text: text.trim() }
-        });
-        
-        setTyping(false);
-
-        if (response.success) {
-            addMessage(response.reply);
-        } else {
-            addMessage({ sender: 'system', text: 'שגיאה בתקשורת עם השרת.' });
-        }
-    }
+            async function init() {
+                showSpinner("מתחבר...");
+                try {
+                    const identifier = '60120'; // In production, get from login
+                    const response = await apiPost({ action: 'login', identifier });
+                    
+                    if (response.status === 'success') {
+                        state.user = response.user;
+                        updateHeader(response.user);
+                        addMessageToCanvas({ sender: 'bot', text: getGreeting() });
+                    } else throw new Error(response.message);
+                } catch (e) {
+                    addMessageToCanvas({ sender: 'bot', text: 'שגיאה בהתחברות. נסה לרענן.' });
+                } finally {
+                    hideSpinner();
+                    setupEventListeners();
+                }
+            }
             
             function setupEventListeners() {
                 dom.sendBtn.addEventListener('click', handleUserInput);
@@ -534,3 +444,4 @@
     </script>
 </body>
 </html>
+
