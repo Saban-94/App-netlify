@@ -1404,7 +1404,7 @@
         // --- History Logic ---
         
         function renderHistory() {
-            const list = dom.historyList;
+            const list = dom.historyList = document.getElementById('historyList');
             list.innerHTML = '';
             
             clientState.clientData.history.forEach(item => {
